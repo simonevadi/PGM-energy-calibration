@@ -13,8 +13,7 @@ measured_energies = np.array([398.3, 398.1, 397.9, 397.7, 397.1, 396.76, 396.4, 
 c = PGMCalibration(N, k)
 
 # Set a reasonable initial guess manually
-c.set_initial_guess(DTheta=537E-6, DBeta=512E-6, E=400.27)  # Example initial guess values
-# c.set_initial_guess(DTheta=0, DBeta=0, E=397.0)  # Example initial guess values
+c.set_initial_guess(DTheta=0, DBeta=0, E=398)  # Example initial guess values
 
 # Perform fitting
 dtheta, dbeta, E_opt = c.fit_parameters(measured_energies, cff_values)
