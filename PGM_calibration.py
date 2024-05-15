@@ -35,7 +35,7 @@ class PGMCalibration:
         """
         self.initial_guess = {'DTheta': DTheta, 'DBeta': DBeta, 'E': E}
 
-    def grating_equation(self, wavelength, theta, beta, dtheta=0, dbeta=0):
+    def grating_equation(self, theta, beta, dtheta=0, dbeta=0):
         """
         Calculate energy using the grating equation.
 
@@ -143,7 +143,7 @@ class PGMCalibration:
         beta = self.calc_beta(true_wavelength, cff)
         alpha = self.calc_alpha(beta, cff)
         theta = self.calc_theta(alpha, beta)
-        es = self.grating_equation(true_wavelength, theta, beta, dtheta=dtheta, dbeta=dbeta)
+        es = self.grating_equation(theta, beta, dtheta=dtheta, dbeta=dbeta)
         return es
 
     def residuals(self, params, measured_energies, cff_values):
@@ -187,8 +187,8 @@ class PGMCalibration:
         Print the fit results in a formatted table.
         """
         # Convert to urad and round to two decimals
-        DTheta_urad = np.round(self.DTheta * 1, 6)
-        DBeta_urad = np.round(self.DBeta * 1, 6)
+        DTheta_urad = np.round(self.DTheta * 1E6, 2)
+        DBeta_urad = np.round(self.DBeta * 1E6, 2)
         E_opt_rounded = np.round(self.E_opt, 2)
 
         # Prepare data for tabulate
@@ -216,16 +216,16 @@ class PGMCalibration:
         """
         # Calculate fitted energies
         cff_plot = np.arange(cff_values[0], cff_values[-1], .1)
-        fitted_energies = self.shifted_energy(cff_plot, DTheta, DBeta, E_opt)        
+        fitted_energies = self.shifted_energy(cff_values, DTheta, DBeta, E_opt)        
         # Calculate initial guess energies
         initial_guess_energies = self.shifted_energy(cff_values,
                                                      self.initial_guess['DTheta'],
                                                      self.initial_guess['DBeta'],
-                                                     measured_energies)
+                                                     self.initial_guess['E'])
         
         plt.plot(cff_values, measured_energies, 'ro', label='Measured energies')
         plt.plot(cff_values, initial_guess_energies, 'g', label='Initial guess')
-        plt.plot(cff_plot, fitted_energies, 'b-', label='Fitted energies')
+        plt.plot(cff_values, fitted_energies, 'b-', label='Fitted energies')
         plt.xlabel('$c_{ff}$')
         plt.ylabel('Energy (eV)')
         plt.xscale('log')
