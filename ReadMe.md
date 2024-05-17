@@ -22,7 +22,7 @@ This project aims to analyze nitrogen spectra to evaluate the resolving power (R
 ### Configuration and Documentation
 
 - **requirements.txt**: List of Python dependencies required for the project.
-- **README.md**: Original README file for the project.
+- **CalibrationProcedure.md**: Explanation of the calibration procedure as I understood it from the paper.
 - **EnergyCalibrationPaper.pdf**: the energy calibration paper
 
 ## How to Use the Project

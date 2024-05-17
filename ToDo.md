@@ -1,0 +1,1 @@
+At the moment I am not using, to calculate alpha and beta and theta, the formulas given in the paper. I already had some others implemented in python, but since I have an energy shift I would like to compare them.
