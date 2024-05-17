@@ -1,13 +1,18 @@
 import numpy as np
+import pandas as pd
+import os
 
 from PGM_calibration import PGMCalibration
 
 N = 1200  # Line density (grating grooves per mm)
 k = 1  # Order of diffraction
 
+os.makedirs('Results/ExampleCalibrationPO4', exist_ok=True)
 # Example data
-cff_values = np.array([1.6, 1.8, 2.0, 2.25, 3.5, 5.0, 8.0, 10.0, 15.0])
-measured_energies = np.array([398.3, 398.1, 397.9, 397.7, 397.1, 396.76, 396.4, 396.3, 396.17])
+df = pd.read_csv('Results/ExampleN2Fit/N2_fit_results.csv')
+
+cff_values = np.array(df['cff'])
+measured_energies = np.array(df['peak_energy'])
 
 # Instantiate the calibration class
 c = PGMCalibration(N, k)
@@ -22,6 +27,6 @@ c.print_fit_results()
 # Plot the fitting results along with initial guess
 c.plot_fit(measured_energies, cff_values,
            DTheta=dtheta, DBeta=dbeta, E_opt=E_opt,
-           show=False, savepath='fit_results.png')
+           show=False, savepath='Results/ExampleCalibrationPO4/fit_results_PO4_data.png')
 
 

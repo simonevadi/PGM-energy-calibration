@@ -29,25 +29,25 @@ class PGMCalibration:
         Set the initial guess for the fitting parameters.
         
         Args:
-            DTheta (float): Initial guess for delta theta.
-            DBeta (float): Initial guess for delta beta.
-            E (float): Initial guess for energy.
+            DTheta (float): Initial guess for delta theta in rad
+            DBeta (float): Initial guess for delta beta in rad
+            E (float): Initial guess for energy in eV
         """
         self.initial_guess = {'DTheta': DTheta, 'DBeta': DBeta, 'E': E}
 
     def grating_equation(self, theta, beta, dtheta=0, dbeta=0):
         """
-        Calculate energy using the grating equation.
+        Calculate energy using the grating equation. Angles are grazing and in degrees
 
         Args:
             wavelength (float): Wavelength of the light.
-            theta (float): Angle of incidence.
-            beta (float): Angle of diffraction.
+            theta (float): Grazing angle on the mirror in deg
+            beta (float): Grazing exit angle grating in deg
             dtheta (float, optional): Delta theta. Defaults to 0.
             dbeta (float, optional): Delta beta. Defaults to 0.
 
         Returns:
-            float: Calculated energy.
+            float: Calculated energy in eV
         """
         theta = np.deg2rad(90) - (theta + dtheta)
         beta = -(np.deg2rad(90) - (beta + dbeta))
