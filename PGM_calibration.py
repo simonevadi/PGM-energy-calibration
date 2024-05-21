@@ -166,42 +166,56 @@ class PGMCalibration:
             residuals.append(measured_energy - shifted_energy)
         return residuals
 
-    def fit_parameters(self, measured_energies, cff_values):
+    def fit_parameters(self, measured_energies, cff_values, delta_E=5):
         """
         Fit parameters using least squares optimization.
 
         Args:
             measured_energies (list): List of measured energies.
             cff_values (list): List of fixed focus constant values.
+            delta_E (int,float): maximum deviation of the energy from the initial guess parameter
 
         Returns:
             tuple: Optimized parameters (DTheta, DBeta, E_opt).
         """
         initial_guess_list = [self.initial_guess['DTheta'], self.initial_guess['DBeta'], self.initial_guess['E']]
-        result = least_squares(self.residuals, initial_guess_list, args=(measured_energies, cff_values))
+        
+        # Define bounds for the parameters
+        lower_bounds = [-np.inf, -np.inf, self.initial_guess['E'] - delta_E]
+        upper_bounds = [np.inf, np.inf, self.initial_guess['E'] + delta_E]
+        
+        result = least_squares(self.residuals, initial_guess_list, args=(measured_energies, cff_values),
+                            bounds=(lower_bounds, upper_bounds))
+        
         self.DTheta, self.DBeta, self.E_opt = result.x
         return self.DTheta, self.DBeta, self.E_opt
+
 
     def print_fit_results(self):
         """
         Print the fit results in a formatted table.
         """
-        # Convert to urad and round to two decimals
+        # round to two decimals
         DTheta_urad = np.round(self.DTheta * 1E6, 2)
         DBeta_urad = np.round(self.DBeta * 1E6, 2)
         E_opt_rounded = np.round(self.E_opt, 2)
 
+        # Convert to deg and round to two decimals
+        DTheta_deg = np.round(np.rad2deg(self.DTheta), 6)
+        DBeta_deg = np.round(np.rad2deg(self.DBeta), 6)
+        E_opt_rounded = np.round(self.E_opt, 6)
+
         # Prepare data for tabulate
-        headers = ["Parameter", "Value"]
+        headers = ["Parameter", "Value", 'Value']
         data = [
-            ["DTheta [urad]", f"{DTheta_urad:>10}"],
-            ["DBeta  [urad]", f"{DBeta_urad:>10}"],
-            ["E_opt  [eV]", f"{E_opt_rounded:>10}"]
+            ["DTheta ", f"{DTheta_urad:>10} [urad]", f"{DTheta_deg:>10} [deg]"],
+            ["DBeta", f"{DBeta_urad:>10} [urad]", f"{DBeta_deg:>10} [deg]"],
+            ["E_opt  ", f"{E_opt_rounded:>10} [eV]", f"{E_opt_rounded:>10} [eV]"]
         ]
 
         # Print the table with a title
         print("\nFit Results\n")
-        print(tabulate(data, headers, tablefmt="pretty", colalign=("left", "right")))
+        print(tabulate(data, headers, tablefmt="pretty", colalign=("left", "right", 'right')))
 
     def plot_fit(self, measured_energies, cff_values, DTheta=0, DBeta=0, E_opt=0, savepath=None, show=True):
         """
@@ -216,7 +230,9 @@ class PGMCalibration:
         """
         # Calculate fitted energies
         cff_plot = np.arange(cff_values[0], cff_values[-1], .1)
-        fitted_energies = self.shifted_energy(cff_values, DTheta, DBeta, E_opt)        
+        fitted_energies = self.shifted_energy(cff_plot, DTheta, DBeta, E_opt)      
+
+        print(f'{cff_plot.shape}, {fitted_energies.shape}')  
         # Calculate initial guess energies
         initial_guess_energies = self.shifted_energy(cff_values,
                                                      self.initial_guess['DTheta'],
@@ -225,7 +241,7 @@ class PGMCalibration:
         
         plt.plot(cff_values, measured_energies, 'ro', label='Measured energies')
         plt.plot(cff_values, initial_guess_energies, 'g', label='Initial guess')
-        plt.plot(cff_values, fitted_energies, 'b-', label='Fitted energies')
+        plt.plot(cff_plot, fitted_energies, 'b-', label='Fitted energies')
         plt.xlabel('$c_{ff}$')
         plt.ylabel('Energy (eV)')
         plt.xscale('log')
