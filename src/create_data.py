@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 
 def apply_energy_shifts(input_file, cff, energy_shift):
     """

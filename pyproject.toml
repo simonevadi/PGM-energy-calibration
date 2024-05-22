@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pgm-energy-calibration"
+version = "0.1.0"
+description = "A program to calibrate PGM energy"
+readme = "README.md"
+# readme.content.type = "text/markdown"
+authors = [
+    { name = "Simone Vadilonga", email = "simone.vadilonga@helmholtz-berlin.de" }
+]

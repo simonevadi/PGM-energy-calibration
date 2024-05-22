@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from tabulate import tabulate
 
 class PGMCalibration:
-    def __init__(self, N, k):
+    def __init__(self, N):
         """
         Initialize the PGMCalibration class with given parameters.
 
@@ -13,7 +13,7 @@ class PGMCalibration:
             k (int): Order of diffraction
         """
         self.N = N * 1000            # lines/m
-        self.k = k
+        # self.k = k
         self.h = 4.135667696E-15     # eV*sec
         self.c = 299792458           # m/s 
         self.hc = self.h * self.c
@@ -35,7 +35,7 @@ class PGMCalibration:
         """
         self.initial_guess = {'DTheta': DTheta, 'DBeta': DBeta, 'E': E}
 
-    def grating_equation(self, theta, beta, dtheta=0, dbeta=0):
+    def grating_equation(self, theta, beta, k, dtheta=0, dbeta=0):
         """
         Calculate energy using the grating equation. Angles are grazing and in degrees
 
@@ -51,11 +51,11 @@ class PGMCalibration:
         """
         theta = np.deg2rad(90) - (theta + dtheta)
         beta = -(np.deg2rad(90) - (beta + dbeta))
-        wavelength = (2 * np.cos(theta) * np.sin(theta + beta)) / (self.N * self.k)
+        wavelength = (2 * np.cos(theta) * np.sin(theta + beta)) / (self.N * k)
         en = self.calc_energy(wavelength)
         return en
 
-    def calc_beta(self, wavelength, cff):
+    def calc_beta(self, wavelength, cff, order):
         """
         Calculate beta angle.
 
@@ -66,7 +66,7 @@ class PGMCalibration:
         Returns:
             float: Calculated beta angle.
         """
-        a = 2 * self.N * self.k * wavelength
+        a = 2 * self.N * order * wavelength
         b = cff**2 / (cff**2 - 1)
         beta = np.sqrt(a * b)
         return beta
@@ -126,7 +126,7 @@ class PGMCalibration:
         energy = self.hc / wavelength
         return energy
 
-    def shifted_energy(self, cff, dtheta, dbeta, true_energy):
+    def shifted_energy(self, cff, order, dtheta, dbeta, true_energy):
         """
         Calculate shifted energy.
 
@@ -140,13 +140,13 @@ class PGMCalibration:
             float: Shifted energy.
         """
         true_wavelength = self.calc_wavelength(true_energy)
-        beta = self.calc_beta(true_wavelength, cff)
+        beta = self.calc_beta(true_wavelength, cff, order)
         alpha = self.calc_alpha(beta, cff)
         theta = self.calc_theta(alpha, beta)
-        es = self.grating_equation(theta, beta, dtheta=dtheta, dbeta=dbeta)
+        es = self.grating_equation(theta, beta, order, dtheta=dtheta, dbeta=dbeta)
         return es
 
-    def residuals(self, params, measured_energies, cff_values):
+    def residuals(self, params, measured_energies, cff_values, orders):
         """
         Calculate residuals between measured and shifted energies.
 
@@ -162,11 +162,20 @@ class PGMCalibration:
         residuals = []
         for i, cff in enumerate(cff_values):
             measured_energy = measured_energies[i]
-            shifted_energy = self.shifted_energy(cff, DTheta, DBeta, E)
+            shifted_energy = self.shifted_energy(cff, orders[i], DTheta, DBeta, E)
             residuals.append(measured_energy - shifted_energy)
+            self.check_angles(measured_energy, shifted_energy, cff, orders[i])
+        print('\n\n')
         return residuals
+    
+    def check_angles(self, E,shifted_energy, cff,order):
+        true_wavelength = self.calc_wavelength(E)
+        beta = self.calc_beta(true_wavelength, cff, order)
+        alpha = self.calc_alpha(beta, cff)
+        theta = self.calc_theta(alpha, beta)
+        print(f'E={E}, w={true_wavelength}, cff={cff},  theta={90-np.rad2deg(theta)}, beta={90-np.rad2deg(beta)}, Ecal={shifted_energy}')
 
-    def fit_parameters(self, measured_energies, cff_values, delta_E=5):
+    def fit_parameters(self, measured_energies, cff_values, orders, delta_E=3):
         """
         Fit parameters using least squares optimization.
 
@@ -184,7 +193,7 @@ class PGMCalibration:
         lower_bounds = [-np.inf, -np.inf, self.initial_guess['E'] - delta_E]
         upper_bounds = [np.inf, np.inf, self.initial_guess['E'] + delta_E]
         
-        result = least_squares(self.residuals, initial_guess_list, args=(measured_energies, cff_values),
+        result = least_squares(self.residuals, initial_guess_list, args=(measured_energies, cff_values, orders),
                             bounds=(lower_bounds, upper_bounds))
         
         self.DTheta, self.DBeta, self.E_opt = result.x
@@ -217,31 +226,50 @@ class PGMCalibration:
         print("\nFit Results\n")
         print(tabulate(data, headers, tablefmt="pretty", colalign=("left", "right", 'right')))
 
-    def plot_fit(self, measured_energies, cff_values, DTheta=0, DBeta=0, E_opt=0, savepath=None, show=True):
+    def plot_fit(self, measured_energies, cff_values, orders, DTheta=0, DBeta=0, E_opt=0, savepath=None, show=True):
         """
         Plot the measured, initial guess, and fitted energies.
 
         Args:
             measured_energies (list): List of measured energies.
             cff_values (list): List of fixed focus constant values.
+            orders (list): List of diffraction orders.
             DTheta (float, optional): Delta theta for fit. Defaults to 0.
             DBeta (float, optional): Delta beta for fit. Defaults to 0.
             E_opt (float, optional): Optimized energy. Defaults to 0.
+            savepath (str, optional): Path to save the plot. Defaults to None.
+            show (bool, optional): Whether to display the plot. Defaults to True.
         """
-        # Calculate fitted energies
-        cff_plot = np.arange(cff_values[0], cff_values[-1], .1)
-        fitted_energies = self.shifted_energy(cff_plot, DTheta, DBeta, E_opt)      
-
-        print(f'{cff_plot.shape}, {fitted_energies.shape}')  
-        # Calculate initial guess energies
-        initial_guess_energies = self.shifted_energy(cff_values,
-                                                     self.initial_guess['DTheta'],
-                                                     self.initial_guess['DBeta'],
-                                                     self.initial_guess['E'])
+        unique_orders = np.unique(orders)
+        colors = plt.cm.viridis(np.linspace(0, 1, len(unique_orders)))
         
-        plt.plot(cff_values, measured_energies, 'ro', label='Measured energies')
-        plt.plot(cff_values, initial_guess_energies, 'g', label='Initial guess')
-        plt.plot(cff_plot, fitted_energies, 'b-', label='Fitted energies')
+        plt.figure()
+        
+        for idx, order in enumerate(unique_orders):
+            # Filter data for the current order
+            mask = (orders == order)
+            cff_order = cff_values[mask]
+            measured_order = measured_energies[mask]
+            
+            # Calculate fitted energies for the current order
+            cff_plot = np.arange(cff_order[0], cff_order[-1], .1)
+            fitted_energies = self.shifted_energy(cff_plot, 
+                                                np.full(cff_plot.shape, order), 
+                                                DTheta, 
+                                                DBeta, 
+                                                E_opt )       
+
+            # Calculate initial guess energies for the current order
+            initial_guess_energies = self.shifted_energy(cff_order,
+                                                        np.full(cff_order.shape, order),
+                                                        self.initial_guess['DTheta'],
+                                                        self.initial_guess['DBeta'],
+                                                        self.initial_guess['E']) 
+            
+            plt.scatter(cff_order, measured_order , color=colors[idx], label=f'Measured Order {order}', alpha=0.7)
+            plt.plot(cff_order, initial_guess_energies, '--', color=colors[idx], label=f'Initial Guess Order {order}', alpha=0.7)
+            plt.plot(cff_plot, fitted_energies, '-', color=colors[idx], label=f'Fitted Order {order}', alpha=0.7)
+        
         plt.xlabel('$c_{ff}$')
         plt.ylabel('Energy (eV)')
         plt.xscale('log')
@@ -250,3 +278,4 @@ class PGMCalibration:
             plt.savefig(savepath)
         if show:
             plt.show()
+

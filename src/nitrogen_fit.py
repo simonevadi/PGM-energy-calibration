@@ -13,7 +13,7 @@ from scipy.special import erf, erfc
 from scipy.special import gamma as gamfcn
 from scipy.special import wofz
 
-from nitrogen_plot import PlotNitrogenFit
+from .nitrogen_plot import PlotNitrogenFit
 
 class N2_fit:
     """
