@@ -151,9 +151,9 @@ class PGMCalibration:
     
     def check_angles(self, E,shifted_energy, cff,order, DTheta, DBeta):
         true_wavelength = self.calc_wavelength(E)
-        beta = self.calc_beta_old(true_wavelength, cff, order)
-        alpha = self.calc_alpha_old(beta, cff)
-        theta = self.calc_theta_old(alpha, beta)
+        beta = self.calc_beta(true_wavelength, cff, order)
+        alpha = self.calc_alpha(beta, cff)
+        theta = self.calc_theta(alpha, beta)
         shifted_energy = self.grating_equation(theta, beta, order)#, dtheta=DTheta, dbeta=DBeta)
         print(f'E={E}, w={true_wavelength}, cff={cff}, alpha={np.rad2deg(alpha)},  theta={np.rad2deg(theta)}, beta={np.rad2deg(beta)}, Ecal={shifted_energy}')
 
