@@ -146,25 +146,7 @@ class PGMCalibration:
         es = self.grating_equation(theta, beta, order, dtheta=dtheta, dbeta=dbeta)
         return es
 
-    def residuals(self, params, measured_energies, cff_values, orders):
-        """
-        Calculate residuals between measured and shifted energies.
 
-        Args:
-            params (list): List of parameters [DTheta, DBeta, E].
-            measured_energies (list): List of measured energies.
-            cff_values (list): List of fixed focus constant values.
-
-        Returns:
-            list: List of residuals.
-        """
-        DTheta, DBeta, E = params
-        residuals = []
-        for i, cff in enumerate(cff_values):
-            measured_energy = measured_energies[i]
-            shifted_energy = self.shifted_energy(cff, orders[i], DTheta, DBeta, E)
-            residuals.append(measured_energy - shifted_energy)
-        return residuals
     
     def check_angles(self, E,shifted_energy, cff,order):
         true_wavelength = self.calc_wavelength(E)
@@ -172,7 +154,29 @@ class PGMCalibration:
         alpha = self.calc_alpha(beta, cff)
         theta = self.calc_theta(alpha, beta)
         print(f'E={E}, w={true_wavelength}, cff={cff},  theta={90-np.rad2deg(theta)}, beta={90-np.rad2deg(beta)}, Ecal={shifted_energy}')
+    
+    def residuals(self, params, measured_energies, cff_values, orders):
+        """
+        Calculate residuals between measured and shifted energies with weights for higher orders.
 
+        Args:
+            params (list): List of parameters [DTheta, DBeta, E].
+            measured_energies (list): List of measured energies.
+            cff_values (list): List of fixed focus constant values.
+            orders (list): List of diffraction orders.
+
+        Returns:
+            list: List of weighted residuals.
+        """
+        DTheta, DBeta, E = params
+        residuals = []
+        for i, cff in enumerate(cff_values):
+            measured_energy = measured_energies[i]
+            shifted_energy = self.shifted_energy(cff, orders[i], DTheta, DBeta, E)
+            weight = 1 / orders[i]**2  # Example weight: inverse of the order
+            residuals.append(weight * (measured_energy - shifted_energy))
+        return residuals
+    
     def fit_parameters(self, measured_energies, cff_values, orders, print_fit_report=True, delta_E=3):
         """
         Fit parameters using least squares optimization.

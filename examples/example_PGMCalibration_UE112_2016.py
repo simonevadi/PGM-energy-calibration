@@ -13,7 +13,14 @@ orders = np.array([           1,      1,     1,      2,      2,      2,      3, 
 cff_values = np.array([       1.5,    3,     8,      1.5,    3,      8,      1.5,    3,      8,      1.5,    3,      8])
 measured_energies = np.array([92.819, 91.84, 91.416, 92.295, 91.641, 91.341, 92.044, 91.545, 91.309, 91.913, 91.489, 91.284 ])
 
+# Select only orders 3 and 4
+selected_orders = [1]
+mask = np.isin(orders, selected_orders)
 
+# Filtered data
+orders = orders[mask]
+cff_values = cff_values[mask]
+measured_energies = measured_energies[mask]
 
 
 
