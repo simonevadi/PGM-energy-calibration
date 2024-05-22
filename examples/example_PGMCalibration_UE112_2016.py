@@ -44,8 +44,8 @@ c.plot_fit(measured_energies, cff_values, orders,
 
 
 # Convert dtheta and dbeta from radians to degrees
-dtheta_deg = np.rad2deg(dtheta)
-dbeta_deg = np.rad2deg(dbeta)
+dtheta_deg = abs(np.rad2deg(dtheta))
+dbeta_deg = abs(np.rad2deg(dbeta))
 
 # Rolf's results
 rolf_dtheta = 0.014690

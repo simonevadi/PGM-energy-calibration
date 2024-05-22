@@ -99,6 +99,7 @@ class PGMCalibration:
         """
         theta = (beta + alpha) / 2
         return theta
+    
 
     def calc_wavelength(self, energy):
         """
@@ -148,16 +149,29 @@ class PGMCalibration:
 
 
     
-    def check_angles(self, E,shifted_energy, cff,order):
+    def check_angles(self, E,shifted_energy, cff,order, DTheta, DBeta):
         true_wavelength = self.calc_wavelength(E)
-        beta = self.calc_beta(true_wavelength, cff, order)
-        alpha = self.calc_alpha(beta, cff)
-        theta = self.calc_theta(alpha, beta)
-        print(f'E={E}, w={true_wavelength}, cff={cff},  theta={90-np.rad2deg(theta)}, beta={90-np.rad2deg(beta)}, Ecal={shifted_energy}')
-    
+        beta = self.calc_beta_old(true_wavelength, cff, order)
+        alpha = self.calc_alpha_old(beta, cff)
+        theta = self.calc_theta_old(alpha, beta)
+        shifted_energy = self.grating_equation(theta, beta, order)#, dtheta=DTheta, dbeta=DBeta)
+        print(f'E={E}, w={true_wavelength}, cff={cff}, alpha={np.rad2deg(alpha)},  theta={np.rad2deg(theta)}, beta={np.rad2deg(beta)}, Ecal={shifted_energy}')
+
+    def check_angles_from_paper(self, E,shifted_energy, cff,order, DTheta, DBeta):
+        true_wavelength = self.hc*order/E
+        temp   = (cff * cff - 1) / (true_wavelength * self.N)
+        w      = cff * cff + temp * temp
+        x      = true_wavelength * self.N / (cff * cff - 1) * (np.sqrt(w) - 1)
+        alpha  = np.arcsin(x)
+        beta  = abs(-1 * np.arccos(cff * np.cos(alpha)))
+        theta = 0.5 * (alpha + beta)
+        shifted_energy = self.grating_equation(np.deg2rad(90)-theta, np.deg2rad(90)-beta, order)#, dtheta=DTheta, dbeta=DBeta)
+        print(f'E={E}, w={true_wavelength}, cff={cff}, alpha={90-np.rad2deg(alpha)}, theta={90-np.rad2deg(theta)}, beta={90-np.rad2deg(beta)}, Ecal={shifted_energy}')
+        print('\n')
+
     def residuals(self, params, measured_energies, cff_values, orders):
         """
-        Calculate residuals between measured and shifted energies with weights for higher orders.
+        Calculate residuals between measured and shifted energies with higher weights for higher orders.
 
         Args:
             params (list): List of parameters [DTheta, DBeta, E].
@@ -173,8 +187,11 @@ class PGMCalibration:
         for i, cff in enumerate(cff_values):
             measured_energy = measured_energies[i]
             shifted_energy = self.shifted_energy(cff, orders[i], DTheta, DBeta, E)
-            weight = 1 / orders[i]**2  # Example weight: inverse of the order
+            weight = 1#orders[i]+cff  # Higher weight for higher orders
             residuals.append(weight * (measured_energy - shifted_energy))
+            self.check_angles(measured_energy,shifted_energy, cff, orders[i], DTheta, DBeta )
+            self.check_angles_from_paper(measured_energy,shifted_energy, cff, orders[i], DTheta, DBeta )
+        print('\n\n')
         return residuals
     
     def fit_parameters(self, measured_energies, cff_values, orders, print_fit_report=True, delta_E=3):
