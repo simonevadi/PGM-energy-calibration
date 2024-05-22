@@ -164,8 +164,6 @@ class PGMCalibration:
             measured_energy = measured_energies[i]
             shifted_energy = self.shifted_energy(cff, orders[i], DTheta, DBeta, E)
             residuals.append(measured_energy - shifted_energy)
-            self.check_angles(measured_energy, shifted_energy, cff, orders[i])
-        print('\n\n')
         return residuals
     
     def check_angles(self, E,shifted_energy, cff,order):
@@ -175,7 +173,7 @@ class PGMCalibration:
         theta = self.calc_theta(alpha, beta)
         print(f'E={E}, w={true_wavelength}, cff={cff},  theta={90-np.rad2deg(theta)}, beta={90-np.rad2deg(beta)}, Ecal={shifted_energy}')
 
-    def fit_parameters(self, measured_energies, cff_values, orders, delta_E=3):
+    def fit_parameters(self, measured_energies, cff_values, orders, print_fit_report=True, delta_E=3):
         """
         Fit parameters using least squares optimization.
 
@@ -194,10 +192,31 @@ class PGMCalibration:
         upper_bounds = [np.inf, np.inf, self.initial_guess['E'] + delta_E]
         
         result = least_squares(self.residuals, initial_guess_list, args=(measured_energies, cff_values, orders),
-                            bounds=(lower_bounds, upper_bounds))
+                            #bounds=(lower_bounds, upper_bounds),
+                            method='lm')
         
         self.DTheta, self.DBeta, self.E_opt = result.x
+        if print_fit_report:
+            self.print_fit_report(result)
         return self.DTheta, self.DBeta, self.E_opt
+
+    def print_fit_report(self, result):
+        """
+        Print the goodness of fit report.
+
+        Args:
+            result: The result object from the least_squares optimization.
+        """
+        headers = ["Metric", "Value"]
+        data = [
+            ["Cost (Sum of squared residuals)", f"{result.cost:.6f}"],
+            ["Optimality (First-order optimality measure)", f"{result.optimality:.6f}"],
+            ["Number of function evaluations", result.nfev],
+            ["Residuals", result.fun]
+        ]
+        
+        # Print the table
+        print(tabulate(data, headers, tablefmt="pretty", colalign=("left", "left")))
 
 
     def print_fit_results(self):
@@ -226,7 +245,10 @@ class PGMCalibration:
         print("\nFit Results\n")
         print(tabulate(data, headers, tablefmt="pretty", colalign=("left", "right", 'right')))
 
-    def plot_fit(self, measured_energies, cff_values, orders, DTheta=0, DBeta=0, E_opt=0, savepath=None, show=True):
+    def plot_fit(self, measured_energies, cff_values, 
+                 orders, DTheta=0, DBeta=0, E_opt=0, 
+                 savepath=None, show=True,
+                 plot_initial_guess=True):
         """
         Plot the measured, initial guess, and fitted energies.
 
@@ -239,6 +261,7 @@ class PGMCalibration:
             E_opt (float, optional): Optimized energy. Defaults to 0.
             savepath (str, optional): Path to save the plot. Defaults to None.
             show (bool, optional): Whether to display the plot. Defaults to True.
+            plot_initial_guess (bool, optional): Whether to plot the initial guess. Defaults to True.
         """
         unique_orders = np.unique(orders)
         colors = plt.cm.viridis(np.linspace(0, 1, len(unique_orders)))
@@ -267,15 +290,34 @@ class PGMCalibration:
                                                         self.initial_guess['E']) 
             
             plt.scatter(cff_order, measured_order , color=colors[idx], label=f'Measured Order {order}', alpha=0.7)
-            plt.plot(cff_order, initial_guess_energies, '--', color=colors[idx], label=f'Initial Guess Order {order}', alpha=0.7)
+            if plot_initial_guess:
+                plt.plot(cff_order, initial_guess_energies, '--', color=colors[idx], label=f'Initial Guess Order {order}', alpha=0.7)
             plt.plot(cff_plot, fitted_energies, '-', color=colors[idx], label=f'Fitted Order {order}', alpha=0.7)
-        
+
         plt.xlabel('$c_{ff}$')
         plt.ylabel('Energy (eV)')
         plt.xscale('log')
+        
+        # Get current tick positions and labels
+        x_ticks = plt.gca().get_xticks()
+        y_ticks = plt.gca().get_yticks()
+        
+        # Create custom tick labels
+        x_labels = [f'{tick:.2f}' for tick in x_ticks]
+        y_labels = [f'{tick:.2f}' for tick in y_ticks]
+        
+        # Set the custom tick labels
+        plt.gca().set_xticks(x_ticks)
+        plt.gca().set_xticklabels(x_labels)
+        plt.gca().set_yticks(y_ticks)
+        plt.gca().set_yticklabels(y_labels)
+
+        plt.xlim((cff_order[0]-.1, cff_order[-1]+1))
         plt.legend()
+        plt.tight_layout()
         if savepath is not None:
             plt.savefig(savepath)
         if show:
             plt.show()
+        return plt
 
