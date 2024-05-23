@@ -14,7 +14,7 @@ cff_values = np.array([       1.5,    3,     8,      1.5,    3,      8,      1.5
 measured_energies = np.array([92.819, 91.84, 91.416, 92.295, 91.641, 91.341, 92.044, 91.545, 91.309, 91.913, 91.489, 91.284 ])
 
 # Select only orders 3 and 4
-selected_orders = [1]
+selected_orders = [1,2, 3, 4]
 mask = np.isin(orders, selected_orders)
 
 # Filtered data
@@ -29,7 +29,7 @@ measured_energies = measured_energies[mask]
 c = PGMCalibration(N)
 
 # Set a reasonable initial guess manually
-c.set_initial_guess(DTheta=0.0, DBeta=0.0, E=91.84)  # Example initial guess values
+c.set_initial_guess(DTheta=0.0, DBeta=0.0, E=91.84, automatic_guess=True)  # Example initial guess values
 
 # Perform fitting
 dtheta, dbeta, E_opt = c.fit_parameters(measured_energies, cff_values, orders)
@@ -43,29 +43,54 @@ c.plot_fit(measured_energies, cff_values, orders,
 
 
 
-# Convert dtheta and dbeta from radians to degrees
-dtheta_deg = abs(np.rad2deg(dtheta))
-dbeta_deg = abs(np.rad2deg(dbeta))
 
-# Rolf's results
+# Rolf's results in deg
 rolf_dtheta = 0.014690
-rolf_dbeta = 0.024430
-en_rolf = 91.008522
+rolf_dbeta  = -0.024430
+en_rolf     = 91.008522
+
 
 # Calculate the percentage difference
-diff_dtheta = 100 * (dtheta_deg - rolf_dtheta) / rolf_dtheta
-diff_dbeta = 100 * (dbeta_deg - rolf_dbeta) / rolf_dbeta
-diff_e_opt = 100 * (E_opt - en_rolf) / en_rolf
+diff_dtheta = 100 * (dtheta - rolf_dtheta) / rolf_dtheta
+diff_dbeta  = 100 * (dbeta - rolf_dbeta) / rolf_dbeta
+diff_e_opt  = 100 * (E_opt - en_rolf) / en_rolf
 
 # Create the table
 headers = ["Parameter", "Fit Results", "Rolf's Results", "Difference"]
 data = [
-    ["DTheta [deg]", f"{dtheta_deg:.6f}", f"{rolf_dtheta:.6f}", f"{diff_dtheta:.2f}%"],
-    ["DBeta  [deg]", f"{dbeta_deg:.6f}", f"{rolf_dbeta:.6f}", f"{diff_dbeta:.2f}%"],
+    ["DTheta [deg]", f"{dtheta:.6f}", f"{rolf_dtheta:.6f}", f"{diff_dtheta:.2f}%"],
+    ["DBeta  [deg]", f"{dbeta:.6f}", f"{rolf_dbeta:.6f}", f"{diff_dbeta:.2f}%"],
     ["E_opt  [eV]", f"{E_opt:.6f}", f"{en_rolf:.6f}", f"{diff_e_opt:.2f}%"]
 ]
 
 # Print the table
+print('\nComparison with Rolfs Results')
 print(tabulate(data, headers, tablefmt="pretty", colalign=("left", "right", "right", "right")))
 
-print(np.rad2deg(-0.000519061))
+
+
+# EMILE Results
+e_dtheta = np.rad2deg(0.014690)
+e_dbeta  = -np.rad2deg(6.63701e-05)
+en_e     = 91.1225
+
+# Calculate the percentage difference
+e_diff_dtheta = 100 * (dtheta - e_dtheta) / e_dtheta
+e_diff_dbeta  = 100 * (dbeta - e_dbeta) / e_dbeta
+e_diff_e_opt  = 100 * (E_opt - en_e) / en_e
+
+# Create the table
+headers = ["Parameter", "Fit Results", "EMILE's Results", "Difference"]
+data = [
+    ["DTheta [deg]", f"{dtheta:.6f}", f"{e_dtheta:.6f}",
+     f"{e_diff_dtheta:.2f}%"],
+    ["DBeta  [deg]", f"{dbeta:.6f}", f"{e_dbeta:.6f}", 
+     f"{e_diff_dbeta:.2f}%"],
+    ["E_opt  [eV]", f"{E_opt:.6f}", f"{en_e:.6f}", 
+     f"{e_diff_e_opt:.4f}%"]
+]
+
+# Print the table
+print('\nComparison with Emiles Results')
+print(tabulate(data, headers, tablefmt="pretty", colalign=("left", "right", "right", "right")))
+
