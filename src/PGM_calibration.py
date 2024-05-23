@@ -24,17 +24,26 @@ class PGMCalibration:
         self.DBeta = None
         self.E_opt = None
 
-    def set_initial_guess(self, DTheta, DBeta, E):
+        # indicates if the initial guess should be done by the program
+        self.automatic_guess = False
+
+    def set_initial_guess(self, DTheta=0, DBeta=0, E=None, automatic_guess=False):
         """
         Set the initial guess for the fitting parameters.
         
         Args:
-            DTheta (float): Initial guess for delta theta in rad
-            DBeta (float): Initial guess for delta beta in rad
+            DTheta (float): Initial guess for delta theta in deg
+            DBeta (float): Initial guess for delta beta in deg
             E (float): Initial guess for energy in eV
         """
-        self.initial_guess = {'DTheta': DTheta, 'DBeta': DBeta, 'E': E}
-
+        if automatic_guess:
+            self.automatic_guess = True
+            return
+        elif not automatic_guess and E is not None:
+            self.initial_guess = {'DTheta': np.deg2rad(DTheta), 'DBeta': np.deg2rad(DBeta), 'E': E}
+        elif not automatic_guess and E is None:
+            raise ValueError('If automatic guess is False, E must be given')
+    
     def grating_equation(self, theta, beta, k, dtheta=0, dbeta=0):
         """
         Calculate energy using the grating equation. Angles are grazing and in degrees
@@ -55,7 +64,7 @@ class PGMCalibration:
         en = self.calc_energy(wavelength)
         return en
 
-    def calc_beta(self, wavelength, cff, order):
+    def calc_beta(self, alpha, cff):
         """
         Calculate beta angle.
 
@@ -64,14 +73,13 @@ class PGMCalibration:
             cff (float): Fixed focus constant.
 
         Returns:
-            float: Calculated beta angle.
+            float: Calculated beta angle in rad.
         """
-        a = 2 * self.N * order * wavelength
-        b = cff**2 / (cff**2 - 1)
-        beta = np.sqrt(a * b)
+        beta  = abs(-1 * np.arccos(cff * np.cos(alpha)))
+
         return beta
 
-    def calc_alpha(self, beta, cff):
+    def calc_alpha(self, cff, order, E):
         """
         Calculate alpha angle.
 
@@ -80,10 +88,14 @@ class PGMCalibration:
             cff (float): Fixed focus constant.
 
         Returns:
-            float: Calculated alpha angle.
+            float: Calculated alpha angle in rad.
         """
-        a = np.sin(beta) / cff
-        alpha = np.arcsin(a)
+        true_wavelength = self.hc*order/E
+        temp   = (cff * cff - 1) / (true_wavelength * self.N)
+        w      = cff * cff + temp * temp
+        x      = true_wavelength * self.N / (cff * cff - 1) * (np.sqrt(w) - 1)
+        alpha  = np.arcsin(x)
+
         return alpha
 
     def calc_theta(self, alpha, beta):
@@ -95,7 +107,7 @@ class PGMCalibration:
             beta (float): Beta angle.
 
         Returns:
-            float: Calculated theta angle.
+            float: Calculated theta angle in rad.
         """
         theta = (beta + alpha) / 2
         return theta
@@ -109,7 +121,7 @@ class PGMCalibration:
             energy (float): Energy in eV.
 
         Returns:
-            float: Calculated wavelength.
+            float: Calculated wavelength in meter.
         """
         wavelength = self.hc / energy
         return wavelength
@@ -122,7 +134,7 @@ class PGMCalibration:
             wavelength (float): Wavelength of the light.
 
         Returns:
-            float: Calculated energy.
+            float: Calculated energy in eV.
         """
         energy = self.hc / wavelength
         return energy
@@ -140,24 +152,23 @@ class PGMCalibration:
         Returns:
             float: Shifted energy.
         """
-        true_wavelength = self.calc_wavelength(true_energy)
-        beta = self.calc_beta(true_wavelength, cff, order)
-        alpha = self.calc_alpha(beta, cff)
+        # true_wavelength = self.calc_wavelength(true_energy)
+        alpha = self.calc_alpha(cff, order, true_energy)
+        beta = self.calc_beta(alpha, cff)
         theta = self.calc_theta(alpha, beta)
-        es = self.grating_equation(theta, beta, order, dtheta=dtheta, dbeta=dbeta)
+        es = self.grating_equation(np.deg2rad(90)-theta, np.deg2rad(90)-beta, order, dtheta=dtheta, dbeta=dbeta)
+        # print(f'E={true_energy}, cff={cff}, alpha={np.rad2deg(alpha)}, theta={90-np.rad2deg(theta)}, beta={90-np.rad2deg(beta)}, Ecal={es}')
         return es
 
-
-    
-    def check_angles(self, E,shifted_energy, cff,order, DTheta, DBeta):
+    def _check_angles(self, E,shifted_energy, cff,order, DTheta, DBeta):
         true_wavelength = self.calc_wavelength(E)
-        beta = self.calc_beta(true_wavelength, cff, order)
-        alpha = self.calc_alpha(beta, cff)
+        alpha = self.calc_alpha(cff, order, shifted_energy)
+        beta = self.calc_beta(alpha, cff)
         theta = self.calc_theta(alpha, beta)
         shifted_energy = self.grating_equation(theta, beta, order)#, dtheta=DTheta, dbeta=DBeta)
         print(f'E={E}, w={true_wavelength}, cff={cff}, alpha={np.rad2deg(alpha)},  theta={np.rad2deg(theta)}, beta={np.rad2deg(beta)}, Ecal={shifted_energy}')
 
-    def check_angles_from_paper(self, E,shifted_energy, cff,order, DTheta, DBeta):
+    def _check_angles_from_paper(self, E,shifted_energy, cff,order, DTheta, DBeta):
         true_wavelength = self.hc*order/E
         temp   = (cff * cff - 1) / (true_wavelength * self.N)
         w      = cff * cff + temp * temp
@@ -187,11 +198,7 @@ class PGMCalibration:
         for i, cff in enumerate(cff_values):
             measured_energy = measured_energies[i]
             shifted_energy = self.shifted_energy(cff, orders[i], DTheta, DBeta, E)
-            weight = 1#orders[i]+cff  # Higher weight for higher orders
-            residuals.append(weight * (measured_energy - shifted_energy))
-            self.check_angles(measured_energy,shifted_energy, cff, orders[i], DTheta, DBeta )
-            self.check_angles_from_paper(measured_energy,shifted_energy, cff, orders[i], DTheta, DBeta )
-        print('\n\n')
+            residuals.append((measured_energy - shifted_energy))
         return residuals
     
     def fit_parameters(self, measured_energies, cff_values, orders, print_fit_report=True, delta_E=3):
@@ -206,17 +213,26 @@ class PGMCalibration:
         Returns:
             tuple: Optimized parameters (DTheta, DBeta, E_opt).
         """
+        orders            = np.array(orders)
+        cff_values        = np.array(cff_values)
+        measured_energies = np.array(measured_energies)
+        
+        if self.automatic_guess:
+            self.set_initial_guess(DTheta=0, DBeta=0, E=np.mean(measured_energies))
+       
         initial_guess_list = [self.initial_guess['DTheta'], self.initial_guess['DBeta'], self.initial_guess['E']]
         
-        # Define bounds for the parameters
-        lower_bounds = [-np.inf, -np.inf, self.initial_guess['E'] - delta_E]
-        upper_bounds = [np.inf, np.inf, self.initial_guess['E'] + delta_E]
+        result = least_squares(self.residuals, initial_guess_list, 
+                               args=(measured_energies, cff_values, orders),
+                               method='lm')
         
-        result = least_squares(self.residuals, initial_guess_list, args=(measured_energies, cff_values, orders),
-                            #bounds=(lower_bounds, upper_bounds),
-                            method='lm')
+        DTheta, DBeta, self.E_opt = result.x
+        # self.DTheta, self.DBeta, self.E_opt = result.x
+
+        # convert to degrees
+        self.DTheta = np.rad2deg(DTheta)
+        self.DBeta = np.rad2deg(DBeta)
         
-        self.DTheta, self.DBeta, self.E_opt = result.x
         if print_fit_report:
             self.print_fit_report(result)
         return self.DTheta, self.DBeta, self.E_opt
@@ -244,27 +260,27 @@ class PGMCalibration:
         """
         Print the fit results in a formatted table.
         """
-        # round to two decimals
-        DTheta_urad = np.round(self.DTheta * 1E6, 2)
-        DBeta_urad = np.round(self.DBeta * 1E6, 2)
-        E_opt_rounded = np.round(self.E_opt, 2)
+        # Convert to rad and round to two decimals
+        DTheta_urad = np.round(np.deg2rad(self.DTheta) * 1E6, 2)
+        DBeta_urad = np.round(np.deg2rad(self.DBeta)* 1E6, 2)
 
-        # Convert to deg and round to two decimals
-        DTheta_deg = np.round(np.rad2deg(self.DTheta), 6)
-        DBeta_deg = np.round(np.rad2deg(self.DBeta), 6)
+        # Round to two decimals
+        DTheta_deg = np.round(self.DTheta, 6)
+        DBeta_deg  = np.round(self.DBeta, 6)
+        
         E_opt_rounded = np.round(self.E_opt, 6)
 
         # Prepare data for tabulate
-        headers = ["Parameter", "Value", 'Value']
+        headers = ["Parameter", "Initial Guess", "Value", 'Value']
         data = [
-            ["DTheta ", f"{DTheta_urad:>10} [urad]", f"{DTheta_deg:>10} [deg]"],
-            ["DBeta", f"{DBeta_urad:>10} [urad]", f"{DBeta_deg:>10} [deg]"],
-            ["E_opt  ", f"{E_opt_rounded:>10} [eV]", f"{E_opt_rounded:>10} [eV]"]
+            ["DTheta ",f"{self.initial_guess['DTheta']:>10} [deg]", f"{DTheta_urad:>10} [urad]", f"{DTheta_deg:>10} [deg]"],
+            ["DBeta", f"{self.initial_guess['DBeta']:>10} [deg]",f"{DBeta_urad:>10} [urad]", f"{DBeta_deg:>10} [deg]"],
+            ["E_opt  ", f"{np.around(self.initial_guess['E'], 2):>10} [eV]", f"{E_opt_rounded:>10} [eV]", f"{E_opt_rounded:>10} [eV]"]
         ]
 
         # Print the table with a title
         print("\nFit Results\n")
-        print(tabulate(data, headers, tablefmt="pretty", colalign=("left", "right", 'right')))
+        print(tabulate(data, headers, tablefmt="pretty", colalign=("left", "right", 'right', 'right')))
 
     def plot_fit(self, measured_energies, cff_values, 
                  orders, DTheta=0, DBeta=0, E_opt=0, 
@@ -285,8 +301,8 @@ class PGMCalibration:
             plot_initial_guess (bool, optional): Whether to plot the initial guess. Defaults to True.
         """
         unique_orders = np.unique(orders)
-        colors = plt.cm.viridis(np.linspace(0, 1, len(unique_orders)))
-        
+        # colors = plt.cm.viridis(np.linspace(0, 1, len(unique_orders)))
+        colors = ['k', 'royalblue', 'darkgoldenrod', 'g', 'magenta', 'orange', 'red']
         plt.figure()
         
         for idx, order in enumerate(unique_orders):
@@ -310,7 +326,7 @@ class PGMCalibration:
                                                         self.initial_guess['DBeta'],
                                                         self.initial_guess['E']) 
             
-            plt.scatter(cff_order, measured_order , color=colors[idx], label=f'Measured Order {order}', alpha=0.7)
+            plt.scatter(cff_order, measured_order , c=colors[idx], label=f'Measured Order {order}', alpha=0.7)
             if plot_initial_guess:
                 plt.plot(cff_order, initial_guess_energies, '--', color=colors[idx], label=f'Initial Guess Order {order}', alpha=0.7)
             plt.plot(cff_plot, fitted_energies, '-', color=colors[idx], label=f'Fitted Order {order}', alpha=0.7)
