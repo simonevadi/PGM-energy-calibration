@@ -217,6 +217,12 @@ class PGMCalibration:
         cff_values        = np.array(cff_values)
         measured_energies = np.array(measured_energies)
         
+        # Check if a value in cff_values is strictly lower than one
+        mask = cff_values < 1
+        # If the condition is met, make the corresponding value in orders negative
+        orders[mask] *= -1
+        print(orders)
+
         if self.automatic_guess:
             self.set_initial_guess(DTheta=0, DBeta=0, E=np.mean(measured_energies))
        
@@ -311,19 +317,30 @@ class PGMCalibration:
             cff_order = cff_values[mask]
             measured_order = measured_energies[mask]
             
-            # Calculate fitted energies for the current order
-            cff_plot = np.arange(cff_order[0], cff_order[-1], .1)
+            # use more points to plot the fit results
+            cff_plot = np.arange(np.min(cff_values), np.max(cff_values), .01)
+            mask = (cff_plot < 0.9) | (cff_plot > 1.1)
+            cff_plot = cff_plot[mask]
+
+            mask = cff_plot < 1
+            orders_plot = np.full(cff_plot.shape, order)
+            orders_plot[mask] *= -1
+
+            orders_ig = np.full(cff_order.shape, order)
+            mask = cff_order < 1
+            orders_ig[mask] *= -1
+
             fitted_energies = self.shifted_energy(cff_plot, 
-                                                np.full(cff_plot.shape, order), 
-                                                DTheta, 
-                                                DBeta, 
+                                                orders_plot, 
+                                                np.deg2rad(DTheta), 
+                                                np.deg2rad(DBeta), 
                                                 E_opt )       
 
             # Calculate initial guess energies for the current order
             initial_guess_energies = self.shifted_energy(cff_order,
-                                                        np.full(cff_order.shape, order),
-                                                        self.initial_guess['DTheta'],
-                                                        self.initial_guess['DBeta'],
+                                                        orders_ig,
+                                                        np.deg2rad(self.initial_guess['DTheta']),
+                                                        np.deg2rad(self.initial_guess['DBeta']),
                                                         self.initial_guess['E']) 
             
             plt.scatter(cff_order, measured_order , c=colors[idx], label=f'Measured Order {order}', alpha=0.7)
@@ -335,21 +352,17 @@ class PGMCalibration:
         plt.ylabel('Energy (eV)')
         plt.xscale('log')
         
-        # Get current tick positions and labels
-        x_ticks = plt.gca().get_xticks()
-        y_ticks = plt.gca().get_yticks()
-        
-        # Create custom tick labels
-        x_labels = [f'{tick:.2f}' for tick in x_ticks]
-        y_labels = [f'{tick:.2f}' for tick in y_ticks]
-        
-        # Set the custom tick labels
-        plt.gca().set_xticks(x_ticks)
-        plt.gca().set_xticklabels(x_labels)
-        plt.gca().set_yticks(y_ticks)
-        plt.gca().set_yticklabels(y_labels)
+        xmin = np.min(cff_values)
+        xmax = np.max(cff_values)
+        plt.xlim((xmin-.01, xmax+.2))
+        plt.ylim((np.min(measured_energies)-1, np.max(measured_energies)+1))
 
-        plt.xlim((cff_order[0]-.1, cff_order[-1]+1))
+        
+        
+        xticks_positions, xticks_labels = self.generate_x_ticks_pos_and_label(xmin, xmax)
+    
+        plt.xticks(xticks_positions, labels=xticks_labels)
+
         plt.legend()
         plt.tight_layout()
         if savepath is not None:
@@ -357,4 +370,20 @@ class PGMCalibration:
         if show:
             plt.show()
         return plt
+    
+    def generate_x_ticks_pos_and_label(self, xmin, xmax):
+        xticks_positions = []
+        xticks_labels = []
+        # Generate x-tick positions and labels
+        for ind, i in enumerate(np.arange(xmin, xmax, 0.1)):
+            if i < 1 and ind%2==0:
+                xticks_positions.append(i)
+                xticks_labels.append(f"{i:.1f}")
+            else:
+                
+                i = np.round(i,2)
+                if i.is_integer():
+                    xticks_positions.append(i)
+                    xticks_labels.append(f"{int(i)}")
+        return xticks_positions, xticks_labels
 
