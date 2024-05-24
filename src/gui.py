@@ -15,6 +15,12 @@ CONFIG_FILE = 'config/config.json'
 
 class PlotApp:
     def __init__(self, root):
+        """
+        Initialize the PlotApp class.
+
+        Args:
+            root (tk.Tk): The root window of the Tkinter application.
+        """
                 # Store grating value
         self.grating = None
         self.dataframe = None
@@ -39,6 +45,15 @@ class PlotApp:
         self.create_save_plot_frame(control_frame, 6)  
 
     def create_root_frame(self, title):
+        """
+        Create the root frame for the application.
+
+        Args:
+            title (str): The title of the root window.
+
+        Returns:
+            tk.Frame: The created root frame.
+        """
         root.title(title)
 
         # Set initial size of the window
@@ -50,18 +65,40 @@ class PlotApp:
         return root
           
     def create_plot_frame(self, frame):
+        """
+        Create the frame for the plot.
+
+        Args:
+            frame (tk.Frame): The parent frame.
+
+        Returns:
+            tk.Frame: The created plot frame.
+        """
         # Create a frame for the plot
         plot_frame = ttk.Frame(frame)
         plot_frame.grid(row=0, column=0, sticky='nsew')
         return plot_frame
     
     def create_control_frame(self, frame):
+        """
+        Create the frame for the control widgets.
+
+        Args:
+            frame (tk.Frame): The parent frame.
+        """
         # Create a frame for the controls
         self.control_frame = ttk.Frame(frame)
         self.control_frame.grid(row=1, column=0, pady=10, sticky='ew')
         self.control_frame.columnconfigure(0, weight=1)
 
     def create_load_file_frame(self,frame, row):
+        """
+        Create the frame for loading files.
+
+        Args:
+            frame (tk.Frame): The parent frame.
+            row (int): The row position of the frame.
+        """
         # Create the first row frame for Load File button, entry field, and browse button
         load_frame = ttk.Frame(frame)
         load_frame.grid(row=row, column=0, pady=5, sticky='ew')
@@ -85,6 +122,13 @@ class PlotApp:
         self.load_label.pack(side=tk.LEFT, padx=10, pady=5)
 
     def create_set_grating_frame(self, frame, row):
+        """
+        Create the frame for setting the grating.
+
+        Args:
+            frame (tk.Frame): The parent frame.
+            row (int): The row position of the frame.
+        """
         # Create the second row frame for Set Grating button and entry field
         grating_frame = ttk.Frame(frame)
         grating_frame.grid(row=row, column=0, pady=5, sticky='ew')
@@ -108,6 +152,13 @@ class PlotApp:
         self.label_grating.pack(side=tk.LEFT, padx=10, pady=5)
 
     def create_set_saving_param_frame(self, frame, row):
+        """
+        Create the frame for setting saving parameters.
+
+        Args:
+            frame (tk.Frame): The parent frame.
+            row (int): The row position of the frame.
+        """
         # Create the second row frame for Set Grating button and entry field
         saving_p_frame = ttk.Frame(frame)
         saving_p_frame.grid(row=row, column=0, pady=5, sticky='ew')
@@ -128,6 +179,13 @@ class PlotApp:
 
 
     def create_fit_frame(self, frame,row):
+        """
+        Create the frame for the fit button and message label.
+
+        Args:
+            frame (tk.Frame): The parent frame.
+            row (int): The row position of the frame.
+        """
         # Create the third row frame for Fit button and message label
         fit_frame = ttk.Frame(frame)
         fit_frame.grid(row=row, column=0, pady=5, sticky='ew')
@@ -141,7 +199,13 @@ class PlotApp:
         self.label_fit.pack(side=tk.LEFT, padx=10, pady=5)
     
     def create_fit_results_frame(self, frame, row):
-        
+        """
+        Create the frame for displaying fit parameters.
+
+        Args:
+            frame (tk.Frame): The parent frame.
+            row (int): The row position of the frame.
+        """
         # Create the fourth row frame for displaying fit parameters
         results_frame = ttk.Frame(frame)
         results_frame.grid(row=row, column=0, pady=5, sticky='ew')
@@ -158,6 +222,12 @@ class PlotApp:
 
 
     def create_empty_plot(self, plot_frame):
+        """
+        Create an empty plot.
+
+        Args:
+            plot_frame (tk.Frame): The frame where the plot will be displayed.
+        """
         # Create an empty plot
         self.fig, self.ax = plt.subplots()
         self.ax.set_xlabel('CFF Values')
@@ -181,6 +251,13 @@ class PlotApp:
         plot_frame.rowconfigure(0, weight=1)
 
     def create_save_plot_frame(self, frame, row):
+        """
+        Create the frame for saving the plot.
+
+        Args:
+            frame (tk.Frame): The parent frame.
+            row (int): The row position of the frame.
+        """
         # Create the fifth row frame for Save Plot button and entry field
         save_frame = ttk.Frame(frame)
         save_frame.grid(row=row, column=0, pady=5, sticky='ew')
@@ -203,10 +280,16 @@ class PlotApp:
         self.save_label.pack(side=tk.LEFT, padx=10, pady=5)
 
     def set_save_folder(self):
+        """
+        Set the folder for saving the plot.
+        """
         self.save_folder_path = filedialog.askdirectory(initialdir='.', title="Select folder")
         self.save_label.config(text=f"Folder Set")
 
     def save_results(self):
+        """
+        Save the fit results and plot to files.
+        """
         if self.save_folder_path:
             self.file_name_entry.delete(0, tk.END)
             self.file_name_entry.insert(0, os.path.join(self.save_folder_path))
@@ -228,10 +311,16 @@ class PlotApp:
             self.save_label.config(text=f"Results Saved")
     
     def set_beamline_name(self):
+        """
+        Set the beamline name from the entry widget.
+        """
         self.beamline_name = self.saving_p_entry.get()
         self.saving_p_label.config(text=f"Name set: {self.beamline_name}")
 
     def set_grating(self):
+        """
+        Set the grating value from the entry widget.
+        """
         try:
             self.grating = float(self.grating_entry.get())
             self.label_grating.config(text=f"Grating set to: {self.grating} l/mm")
@@ -240,6 +329,9 @@ class PlotApp:
             self.label_grating.config(text="Error: Please enter a valid number for grating")
 
     def load_file_button(self):
+        """
+        Load the file specified in the entry widget.
+        """
         file_path = self.entry.get()
         if os.path.isfile(file_path):
             self.load_label.config(text=f"File loaded")
@@ -249,6 +341,9 @@ class PlotApp:
             self.load_label.config(text="Error: File not found")
 
     def browse_file(self):
+        """
+        Open a file dialog to browse and select a file to load.
+        """
         initial_dir = os.path.dirname(self.last_file_path) if self.last_file_path else '.'
         file_path = filedialog.askopenfilename(initialdir=initial_dir, title="Select file",
                                                filetypes=(("CSV files", "*.csv"), ("all files", "*.*")))
@@ -259,6 +354,12 @@ class PlotApp:
             self.load_file_button()
 
     def plot_cff_vs_en(self, csv_file='gui_data/ue112_2013.csv'):
+        """
+        Plot CFF values vs. measured energies from a CSV file.
+
+        Args:
+            csv_file (str): The path to the CSV file.
+        """
         # Clear previous plot
         self.ax.clear()
         
@@ -280,13 +381,12 @@ class PlotApp:
         self.ax.set_xscale('log')
         self.ax.legend()
         self.ax.grid(True)
+
+        # fix limits and labels
         cff_min = np.min(df['cff_values'])
         cff_max = np.max(df['cff_values'])
         en_min = np.min(df['measured_energies'])
         en_max = np.max(df['measured_energies'])
-        
-
-        
         
         xticks_positions, xticks_labels = self.pgm.generate_x_ticks_pos_and_label(cff_min, cff_max)
     
@@ -297,6 +397,17 @@ class PlotApp:
         self.canvas.draw()
 
     def plot_fit(self, measured_energies, cff_values, orders, DTheta=0, DBeta=0, E_opt=0):
+        """
+        Plot the fit results.
+
+        Args:
+            measured_energies (np.array): The measured energies.
+            cff_values (np.array): The CFF values.
+            orders (np.array): The orders.
+            DTheta (float): The delta theta value.
+            DBeta (float): The delta beta value.
+            E_opt (float): The optimized energy.
+        """
         unique_orders = np.unique(orders)
         colors = ['k', 'royalblue', 'darkgoldenrod', 'g', 'magenta', 'orange', 'red']
         
@@ -327,6 +438,9 @@ class PlotApp:
         self.canvas.draw()
 
     def on_fit_button_click(self):
+        """
+        Perform fitting on the loaded data and update the plot and results.
+        """
         if self.dataframe is not None:
             print(f'Loaded data\n{self.dataframe}')
             self.load_file_button()
@@ -349,8 +463,7 @@ class PlotApp:
                           DTheta=self.dtheta, DBeta=self.dbeta, E_opt=self.E_opt)
 
             # Update labels with fit parameters
-            self.label_fit.config(text=f"Sum Squared Residuals: {np.round(self.cost,5)}, \
-                                  Optimality: {np.round(self.opt,5)}, evaluations {self.nfev}")
+            self.label_fit.config(text=f"Sum Squared Residuals: {np.round(self.cost,5)}, Optimality: {np.round(self.opt,5)}, evaluations {self.nfev}")
             self.dtheta_label.config(text=f"DTheta: {np.round(self.dtheta, 5)} deg")
             self.dbeta_label.config(text=f"DBeta: {np.round(self.dbeta, 5)} deg")
             self.e_opt_label.config(text=f"E_opt: {np.round(self.E_opt, 3)} eV")
@@ -358,10 +471,22 @@ class PlotApp:
             print("No data loaded.")
 
     def save_last_file_path(self, path):
+        """
+        Save the last file path to a configuration file.
+
+        Args:
+            path (str): The file path to save.
+        """
         with open(CONFIG_FILE, 'w') as config_file:
             json.dump({'last_file_path': path}, config_file)
 
     def load_last_file_path(self):
+        """
+        Load the last file path from a configuration file.
+
+        Returns:
+            str: The last file path, or None if not found.
+        """
         if os.path.exists(CONFIG_FILE):
             with open(CONFIG_FILE, 'r') as config_file:
                 config = json.load(config_file)
