@@ -2,11 +2,12 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import numpy as np
 import pandas as pd
 import os
 import json
+import datetime
 
 from PGM_calibration import PGMCalibration
 
@@ -14,95 +15,238 @@ CONFIG_FILE = 'config/config.json'
 
 class PlotApp:
     def __init__(self, root):
-        self.root = root
-        self.root.title("PGM Energy calibration")
+                # Store grating value
+        self.grating = None
+        self.dataframe = None
+        self.pgm = PGMCalibration(0) # Initiliazed with a random value
 
         # Load last file path from config file
         self.last_file_path = self.load_last_file_path()
 
+        root_frame = self.create_root_frame("PGM Energy Calibration")
+        plot_frame = self.create_plot_frame(root_frame)
+        control_frame = self.create_control_frame(root_frame)
+
+        self.button_font_style = ("Helvetica", 20, 'bold')
+        self.text_font_style = ("Helvetica", 20)
+        
+        self.create_empty_plot(plot_frame)
+        self.create_load_file_frame(control_frame, 1)
+        self.create_set_grating_frame(control_frame, 2)
+        self.create_fit_frame(control_frame, 3)
+        self.create_fit_results_frame(control_frame, 4)
+        self.create_set_saving_param_frame(control_frame, 5)
+        self.create_save_plot_frame(control_frame, 6)  
+
+    def create_root_frame(self, title):
+        root.title(title)
+
+        # Set initial size of the window
+        # root.geometry("1200x800")  # width x height
+
         # Make the root window scalable
-        self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(0, weight=1)
-
+        root.columnconfigure(0, weight=1)
+        root.rowconfigure(0, weight=1)
+        return root
+          
+    def create_plot_frame(self, frame):
         # Create a frame for the plot
-        self.plot_frame = ttk.Frame(root)
-        self.plot_frame.grid(row=0, column=0, sticky='nsew')
-
+        plot_frame = ttk.Frame(frame)
+        plot_frame.grid(row=0, column=0, sticky='nsew')
+        return plot_frame
+    
+    def create_control_frame(self, frame):
         # Create a frame for the controls
-        self.control_frame = ttk.Frame(root)
+        self.control_frame = ttk.Frame(frame)
         self.control_frame.grid(row=1, column=0, pady=10, sticky='ew')
         self.control_frame.columnconfigure(0, weight=1)
 
-        # Define a font for control frame widgets
-        button_font_style = ("Helvetica", 12, 'bold')
-        text_font_style = ("Helvetica", 12)
-
+    def create_load_file_frame(self,frame, row):
         # Create the first row frame for Load File button, entry field, and browse button
-        self.load_frame = ttk.Frame(self.control_frame)
-        self.load_frame.grid(row=0, column=0, pady=5, sticky='ew')
+        load_frame = ttk.Frame(frame)
+        load_frame.grid(row=row, column=0, pady=5, sticky='ew')
+
+        # Button: Browse
+        browse_button = tk.Button(load_frame, text="Browse", command=self.browse_file, font=self.button_font_style)
+        browse_button.pack(side=tk.LEFT, padx=10, pady=5)
 
         # Button: file path
-        load_button = tk.Button(self.load_frame, text="Load File", command=self.on_button_click, font=button_font_style)
+        load_button = tk.Button(load_frame, text="Load File", command=self.load_file_button, font=self.button_font_style)
         load_button.pack(side=tk.LEFT, padx=10, pady=5)
 
         # Create an entry widget for the file path with a default value
-        self.entry = tk.Entry(self.load_frame, width=50, font=text_font_style)
+        self.entry = tk.Entry(load_frame, width=50, font=self.text_font_style)
         self.entry.insert(0, self.last_file_path or 'gui_data/ue112_2013.csv')
         self.entry.pack(side=tk.LEFT, padx=10, pady=5, fill=tk.X, expand=True)
+        self.entry.bind('<Return>', lambda event: load_button.invoke())  # Bind Enter key to Load button
 
-        # Button: Browse
-        browse_button = tk.Button(self.load_frame, text="Browse", command=self.browse_file, font=button_font_style)
-        browse_button.pack(side=tk.LEFT, padx=10, pady=5)
+        # Create a label to display messages
+        self.load_label = tk.Label(load_frame, text="File not set", font=self.text_font_style)
+        self.load_label.pack(side=tk.LEFT, padx=10, pady=5)
 
-        # Create the second row frame for Fit button and message label
-        self.fit_frame = ttk.Frame(self.control_frame)
-        self.fit_frame.grid(row=1, column=0, pady=5, sticky='ew')
+    def create_set_grating_frame(self, frame, row):
+        # Create the second row frame for Set Grating button and entry field
+        grating_frame = ttk.Frame(frame)
+        grating_frame.grid(row=row, column=0, pady=5, sticky='ew')
+
+        # Button: Set Grating
+        set_grating_button = tk.Button(grating_frame, text="Set Grating", command=self.set_grating, font=self.button_font_style)
+        set_grating_button.pack(side=tk.LEFT, padx=10, pady=5)
+
+        # Label: Grating
+        grating_label = tk.Label(grating_frame, text="Set Grating [l/mm]:", font=self.text_font_style)
+        grating_label.pack(side=tk.LEFT, padx=10, pady=5)
+
+        # Entry: Grating
+        self.grating_entry = tk.Entry(grating_frame, width=10, font=self.text_font_style)
+        self.grating_entry.insert(0, '600')
+        self.grating_entry.pack(side=tk.LEFT, padx=10, pady=5)
+        self.grating_entry.bind('<Return>', lambda event: set_grating_button.invoke())  # Bind Enter key to Set Grating button
+
+        # Create a label to display messages
+        self.label_grating = tk.Label(grating_frame, text="Grating not Set", font=self.text_font_style)
+        self.label_grating.pack(side=tk.LEFT, padx=10, pady=5)
+
+    def create_set_saving_param_frame(self, frame, row):
+        # Create the second row frame for Set Grating button and entry field
+        saving_p_frame = ttk.Frame(frame)
+        saving_p_frame.grid(row=row, column=0, pady=5, sticky='ew')
+
+        # Button: Set Grating
+        set_saving_p_button = tk.Button(saving_p_frame, text="Set Beamline Name", command=self.set_beamline_name, font=self.button_font_style)
+        set_saving_p_button.pack(side=tk.LEFT, padx=10, pady=5)
+
+        # Entry: Grating
+        self.saving_p_entry = tk.Entry(saving_p_frame, width=10, font=self.text_font_style)
+        self.saving_p_entry.insert(0, 'UE112')
+        self.saving_p_entry.pack(side=tk.LEFT, padx=10, pady=5)
+        self.saving_p_entry.bind('<Return>', lambda event: set_saving_p_button.invoke())  # Bind Enter key to Set Grating button
+
+        # Create a label to display messages
+        self.saving_p_label = tk.Label(saving_p_frame, text="Beamline Name not Set", font=self.text_font_style)
+        self.saving_p_label.pack(side=tk.LEFT, padx=10, pady=5)
+
+
+    def create_fit_frame(self, frame,row):
+        # Create the third row frame for Fit button and message label
+        fit_frame = ttk.Frame(frame)
+        fit_frame.grid(row=row, column=0, pady=5, sticky='ew')
 
         # Create a button to fit the data
-        fit_button = tk.Button(self.fit_frame, text="Fit", command=self.on_fit_button_click, font=button_font_style)
+        fit_button = tk.Button(fit_frame, text="Fit", command=self.on_fit_button_click, font=self.button_font_style)
         fit_button.pack(side=tk.LEFT, padx=10, pady=5)
 
         # Create a label to display messages
-        self.label = tk.Label(self.fit_frame, text="", font=text_font_style)
-        self.label.pack(side=tk.LEFT, padx=10, pady=5)
-
-        # Create the third row frame for displaying fit parameters
-        self.results_frame = ttk.Frame(self.control_frame)
-        self.results_frame.grid(row=2, column=0, pady=5, sticky='ew')
+        self.label_fit = tk.Label(fit_frame, text="", font=self.text_font_style)
+        self.label_fit.pack(side=tk.LEFT, padx=10, pady=5)
+    
+    def create_fit_results_frame(self, frame, row):
+        
+        # Create the fourth row frame for displaying fit parameters
+        results_frame = ttk.Frame(frame)
+        results_frame.grid(row=row, column=0, pady=5, sticky='ew')
 
         # Create labels for displaying fit parameters
-        self.dtheta_label = tk.Label(self.results_frame, text="DTheta: ", font=text_font_style)
+        self.dtheta_label = tk.Label(results_frame, text="DTheta: ", font=self.text_font_style)
         self.dtheta_label.pack(side=tk.LEFT, padx=10, pady=5)
 
-        self.dbeta_label = tk.Label(self.results_frame, text="DBeta: ", font=text_font_style)
+        self.dbeta_label = tk.Label(results_frame, text="DBeta: ", font=self.text_font_style)
         self.dbeta_label.pack(side=tk.LEFT, padx=10, pady=5)
 
-        self.e_opt_label = tk.Label(self.results_frame, text="E_opt: ", font=text_font_style)
+        self.e_opt_label = tk.Label(results_frame, text="E_opt: ", font=self.text_font_style)
         self.e_opt_label.pack(side=tk.LEFT, padx=10, pady=5)
 
+
+    def create_empty_plot(self, plot_frame):
         # Create an empty plot
         self.fig, self.ax = plt.subplots()
-        self.ax.set_xlabel('cff')
-        self.ax.set_ylabel('Energiy [eV]')
-        self.ax.set_title('Energy vs cff')
+        self.ax.set_xlabel('CFF Values')
+        self.ax.set_ylabel('Measured Energies')
+        self.ax.set_title('CFF Values vs Measured Energies')
         self.ax.set_xscale('log')
         self.ax.legend()
         self.ax.grid(True)
 
-        self.canvas = FigureCanvasTkAgg(self.fig, master=self.plot_frame)
+        self.canvas = FigureCanvasTkAgg(self.fig, master=plot_frame)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-        self.dataframe = None
+        # Add the Matplotlib navigation toolbar
+        toolbar = NavigationToolbar2Tk(self.canvas, plot_frame)
+        toolbar.update()
+        toolbar.pack(side=tk.BOTTOM, fill=tk.X)
 
-    def on_button_click(self):
+        # Make the plot frame expandable
+        plot_frame.columnconfigure(0, weight=1)
+        plot_frame.rowconfigure(0, weight=1)
+
+    def create_save_plot_frame(self, frame, row):
+        # Create the fifth row frame for Save Plot button and entry field
+        save_frame = ttk.Frame(frame)
+        save_frame.grid(row=row, column=0, pady=5, sticky='ew')
+
+        # Button: Browse 
+        browse_save_button = tk.Button(save_frame, text="Browse", command=self.set_save_folder, font=self.button_font_style)
+        browse_save_button.pack(side=tk.LEFT, padx=10, pady=5)
+
+
+        # Entry: File Name
+        self.file_name_entry = tk.Entry(save_frame, width=50, font=self.text_font_style)
+        self.file_name_entry.insert(0, 'path needs to be set')
+        self.file_name_entry.pack(side=tk.LEFT, padx=10, pady=5, fill=tk.X, expand=True)
+
+        # Button: Browse and Save
+        browse_save_button = tk.Button(save_frame, text="Save", command=self.save_results, font=self.button_font_style)
+        browse_save_button.pack(side=tk.LEFT, padx=10, pady=5)
+
+        self.save_label = tk.Label(save_frame, text="File not Saved", font=self.text_font_style)
+        self.save_label.pack(side=tk.LEFT, padx=10, pady=5)
+
+    def set_save_folder(self):
+        self.save_folder_path = filedialog.askdirectory(initialdir='.', title="Select folder")
+        self.save_label.config(text=f"Folder Set")
+
+    def save_results(self):
+        if self.save_folder_path:
+            self.file_name_entry.delete(0, tk.END)
+            self.file_name_entry.insert(0, os.path.join(self.save_folder_path))
+            # Adding the new columns to the DataFrame
+            fit_results_df = pd.DataFrame({
+                'dtheta': [self.dtheta],
+                'dbeta': [self.dbeta],
+                'E_opt': [self.E_opt],
+                'cost': [self.cost],
+                'opt': [self.opt],
+                'nfev': [self.nfev]
+            })
+            current_time = datetime.datetime.now().strftime("%Y_%m_%d_%H%M")
+            data_name = os.path.join(self.save_folder_path, f'{current_time}_{self.beamline_name}')
+            self.dataframe.to_csv(data_name+'_input_data.csv', index=False)
+            fit_results_df.to_csv(data_name+'_fit_results.csv', index=False)
+            self.fig.savefig(data_name+'.pdf')
+            
+            self.save_label.config(text=f"Results Saved")
+    
+    def set_beamline_name(self):
+        self.beamline_name = self.saving_p_entry.get()
+        self.saving_p_label.config(text=f"Name set: {self.beamline_name}")
+
+    def set_grating(self):
+        try:
+            self.grating = float(self.grating_entry.get())
+            self.label_grating.config(text=f"Grating set to: {self.grating} l/mm")
+            self.pgm = PGMCalibration(self.grating)
+        except ValueError:
+            self.label_grating.config(text="Error: Please enter a valid number for grating")
+
+    def load_file_button(self):
         file_path = self.entry.get()
         if os.path.isfile(file_path):
-            self.label.config(text=f"File found: {file_path}")
+            self.load_label.config(text=f"File loaded")
             self.plot_cff_vs_en(csv_file=file_path)
             self.save_last_file_path(file_path)
         else:
-            self.label.config(text="Error: File not found")
+            self.load_label.config(text="Error: File not found")
 
     def browse_file(self):
         initial_dir = os.path.dirname(self.last_file_path) if self.last_file_path else '.'
@@ -112,6 +256,7 @@ class PlotApp:
             self.entry.delete(0, tk.END)
             self.entry.insert(0, file_path)
             self.save_last_file_path(file_path)
+            self.load_file_button()
 
     def plot_cff_vs_en(self, csv_file='gui_data/ue112_2013.csv'):
         # Clear previous plot
@@ -135,10 +280,23 @@ class PlotApp:
         self.ax.set_xscale('log')
         self.ax.legend()
         self.ax.grid(True)
+        cff_min = np.min(df['cff_values'])
+        cff_max = np.max(df['cff_values'])
+        en_min = np.min(df['measured_energies'])
+        en_max = np.max(df['measured_energies'])
+        
 
+        
+        
+        xticks_positions, xticks_labels = self.pgm.generate_x_ticks_pos_and_label(cff_min, cff_max)
+    
+        self.ax.set_xticks(xticks_positions, labels=xticks_labels)
+
+        self.ax.set_xlim((cff_min-.005, cff_max+.2))
+        self.ax.set_ylim((en_min-1, en_max+1))
         self.canvas.draw()
 
-    def plot_fit(self, pgm_class, measured_energies, cff_values, orders, DTheta=0, DBeta=0, E_opt=0):
+    def plot_fit(self, measured_energies, cff_values, orders, DTheta=0, DBeta=0, E_opt=0):
         unique_orders = np.unique(orders)
         colors = ['k', 'royalblue', 'darkgoldenrod', 'g', 'magenta', 'orange', 'red']
         
@@ -161,34 +319,41 @@ class PlotApp:
             mask = cff_order < 1
             orders_ig[mask] *= -1
 
-            fitted_energies = pgm_class.shifted_energy(cff_plot, orders_plot, np.deg2rad(DTheta), np.deg2rad(DBeta), E_opt)
+            fitted_energies = self.pgm.shifted_energy(cff_plot, orders_plot, np.deg2rad(DTheta), np.deg2rad(DBeta), E_opt)
 
             self.ax.plot(cff_plot, fitted_energies, '-', color=colors[idx], label=f'Fitted Order {order}', alpha=0.7)
         
-        self.ax.legend()
+        self.ax.legend(loc='upper right')
         self.canvas.draw()
 
     def on_fit_button_click(self):
         if self.dataframe is not None:
-            print(self.dataframe)
+            print(f'Loaded data\n{self.dataframe}')
+            self.load_file_button()
             # Instantiate the calibration class
-            c = PGMCalibration(600)
+            
 
             # Set a reasonable initial guess manually
-            c.set_initial_guess(automatic_guess=True)  # Example initial guess values
+            self.pgm.set_initial_guess(automatic_guess=True)  # Example initial guess values
             measured_energies = self.dataframe['measured_energies']
             cff_values        = self.dataframe['cff_values']
             orders            = self.dataframe['orders']
             # Perform fitting
-            dtheta, dbeta, E_opt = c.fit_parameters(measured_energies, cff_values, orders)
+            self.dtheta, self.dbeta, self.E_opt, \
+            self.cost, self.opt, self.nfev = self.pgm.fit_parameters(measured_energies, 
+                                                                     cff_values, orders,
+                                                                     return_fit_eval=True)
 
-            c.print_fit_results()
-            self.plot_fit(c, measured_energies, cff_values, orders, DTheta=dtheta, DBeta=dbeta, E_opt=E_opt)
+            self.pgm.print_fit_results()
+            self.plot_fit(measured_energies, cff_values, orders, 
+                          DTheta=self.dtheta, DBeta=self.dbeta, E_opt=self.E_opt)
 
             # Update labels with fit parameters
-            self.dtheta_label.config(text=f"DTheta: {np.round(dtheta, 5)} deg")
-            self.dbeta_label.config(text=f"DBeta: {np.round(dbeta, 5)} deg")
-            self.e_opt_label.config(text=f"E_opt: {np.round(E_opt, 3)} eV")
+            self.label_fit.config(text=f"Sum Squared Residuals: {np.round(self.cost,5)}, \
+                                  Optimality: {np.round(self.opt,5)}, evaluations {self.nfev}")
+            self.dtheta_label.config(text=f"DTheta: {np.round(self.dtheta, 5)} deg")
+            self.dbeta_label.config(text=f"DBeta: {np.round(self.dbeta, 5)} deg")
+            self.e_opt_label.config(text=f"E_opt: {np.round(self.E_opt, 3)} eV")
         else:
             print("No data loaded.")
 

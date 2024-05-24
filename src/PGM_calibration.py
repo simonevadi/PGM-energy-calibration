@@ -201,7 +201,9 @@ class PGMCalibration:
             residuals.append((measured_energy - shifted_energy))
         return residuals
     
-    def fit_parameters(self, measured_energies, cff_values, orders, print_fit_report=True, delta_E=3):
+    def fit_parameters(self, measured_energies, cff_values, orders, 
+                       print_fit_report=True,
+                       return_fit_eval=False):
         """
         Fit parameters using least squares optimization.
 
@@ -241,6 +243,8 @@ class PGMCalibration:
         
         if print_fit_report:
             self.print_fit_report(result)
+        if return_fit_eval:
+            return self.DTheta, self.DBeta, self.E_opt, result.cost, result.optimality, result.nfev
         return self.DTheta, self.DBeta, self.E_opt
 
     def print_fit_report(self, result):
