@@ -28,6 +28,7 @@ class PlotApp:
 
         # Load last file path from config file
         self.last_file_path = self.load_last_file_path()
+        self.last_save_directory = self.load_last_save_directory()
 
         root_frame = self.create_root_frame("PGM Energy Calibration")
         plot_frame = self.create_plot_frame(root_frame)
@@ -163,11 +164,11 @@ class PlotApp:
         saving_p_frame = ttk.Frame(frame)
         saving_p_frame.grid(row=row, column=0, pady=5, sticky='ew')
 
-        # Button: Set Grating
+        # Button: Set BEamline Name
         set_saving_p_button = tk.Button(saving_p_frame, text="Set Beamline Name", command=self.set_beamline_name, font=self.button_font_style)
         set_saving_p_button.pack(side=tk.LEFT, padx=10, pady=5)
 
-        # Entry: Grating
+        # Entry: Beamline Name
         self.saving_p_entry = tk.Entry(saving_p_frame, width=10, font=self.text_font_style)
         self.saving_p_entry.insert(0, 'UE112')
         self.saving_p_entry.pack(side=tk.LEFT, padx=10, pady=5)
@@ -258,33 +259,34 @@ class PlotApp:
             frame (tk.Frame): The parent frame.
             row (int): The row position of the frame.
         """
-        # Create the fifth row frame for Save Plot button and entry field
         save_frame = ttk.Frame(frame)
         save_frame.grid(row=row, column=0, pady=5, sticky='ew')
 
-        # Button: Browse 
         browse_save_button = tk.Button(save_frame, text="Browse", command=self.set_save_folder, font=self.button_font_style)
         browse_save_button.pack(side=tk.LEFT, padx=10, pady=5)
 
-
-        # Entry: File Name
+        entry_field = f"{self.last_save_directory}" if self.last_save_directory else "Folder not set"
         self.file_name_entry = tk.Entry(save_frame, width=50, font=self.text_font_style)
-        self.file_name_entry.insert(0, 'path needs to be set')
+        self.file_name_entry.insert(0, entry_field)
         self.file_name_entry.pack(side=tk.LEFT, padx=10, pady=5, fill=tk.X, expand=True)
 
-        # Button: Browse and Save
-        browse_save_button = tk.Button(save_frame, text="Save", command=self.save_results, font=self.button_font_style)
-        browse_save_button.pack(side=tk.LEFT, padx=10, pady=5)
+        save_button = tk.Button(save_frame, text="Save", command=self.save_results, font=self.button_font_style)
+        save_button.pack(side=tk.LEFT, padx=10, pady=5)
 
-        self.save_label = tk.Label(save_frame, text="File not Saved", font=self.text_font_style)
+        last_save_text = "File not Saved"
+        self.save_label = tk.Label(save_frame, text=last_save_text, font=self.text_font_style)
         self.save_label.pack(side=tk.LEFT, padx=10, pady=5)
 
     def set_save_folder(self):
         """
         Set the folder for saving the plot.
         """
-        self.save_folder_path = filedialog.askdirectory(initialdir='.', title="Select folder")
-        self.save_label.config(text=f"Folder Set")
+        initial_dir = self.load_last_save_directory()
+        folder_path = filedialog.askdirectory(initialdir=initial_dir, title="Select folder")
+        if folder_path:
+            self.save_folder_path = folder_path
+            self.save_label.config(text=f"Folder Set")
+            self.save_last_save_directory(folder_path)
 
     def save_results(self):
         """
@@ -352,7 +354,39 @@ class PlotApp:
             self.entry.insert(0, file_path)
             self.save_last_file_path(file_path)
             self.load_file_button()
+    
+    def save_last_save_directory(self, directory):
+        """
+        Save the last directory used for saving results to a configuration file.
 
+        Args:
+            directory (str): The directory path to save.
+        """
+        if os.path.exists(CONFIG_FILE):
+            with open(CONFIG_FILE, 'r') as config_file:
+                config = json.load(config_file)
+        else:
+            config = {}
+
+        config['last_save_directory'] = directory
+
+        with open(CONFIG_FILE, 'w') as config_file:
+            json.dump(config, config_file)
+
+    def load_last_save_directory(self):
+        """
+        Load the last directory used for saving results from a configuration file.
+
+        Returns:
+            str: The last directory path, or the current directory if not found.
+        """
+        if os.path.exists(CONFIG_FILE):
+            with open(CONFIG_FILE, 'r') as config_file:
+                config = json.load(config_file)
+                print('here ',config.get('last_save_directory', '.'))
+                return config.get('last_save_directory', '.')
+        return '.'
+    
     def plot_cff_vs_en(self, csv_file='gui_data/ue112_2013.csv'):
         """
         Plot CFF values vs. measured energies from a CSV file.
