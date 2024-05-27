@@ -255,11 +255,12 @@ class PGMCalibration:
             result: The result object from the least_squares optimization.
         """
         headers = ["Metric", "Value"]
+        residuals_list = [[res] for res in result.fun]
         data = [
             ["Cost (Sum of squared residuals)", f"{result.cost:.6f}"],
             ["Optimality (First-order optimality measure)", f"{result.optimality:.6f}"],
             ["Number of function evaluations", result.nfev],
-            ["Residuals", result.fun]
+            ["Residuals", residuals_list]
         ]
         
         # Print the table
