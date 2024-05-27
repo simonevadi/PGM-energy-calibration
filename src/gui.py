@@ -383,7 +383,6 @@ class PlotApp:
         if os.path.exists(CONFIG_FILE):
             with open(CONFIG_FILE, 'r') as config_file:
                 config = json.load(config_file)
-                print('here ',config.get('last_save_directory', '.'))
                 return config.get('last_save_directory', '.')
         return '.'
     

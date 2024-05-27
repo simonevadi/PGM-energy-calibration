@@ -223,7 +223,6 @@ class PGMCalibration:
         mask = cff_values < 1
         # If the condition is met, make the corresponding value in orders negative
         orders[mask] *= -1
-        print(orders)
 
         if self.automatic_guess:
             self.set_initial_guess(DTheta=0, DBeta=0, E=np.mean(measured_energies))
