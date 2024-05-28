@@ -24,6 +24,8 @@ class PlotApp:
                 # Store grating value
         self.grating = None
         self.dataframe = None
+        self.mono = 'JenOptik'
+        self.mono_types = ['JenOptik', 'PM4', 'Andreas']
         self.pgm = PGMCalibration(0) # Initiliazed with a random value
 
         # Load last file path from config file
@@ -39,11 +41,12 @@ class PlotApp:
         
         self.create_empty_plot(plot_frame)
         self.create_load_file_frame(control_frame, 1)
-        self.create_set_grating_frame(control_frame, 2)
-        self.create_fit_frame(control_frame, 3)
-        self.create_fit_results_frame(control_frame, 4)
-        self.create_set_saving_param_frame(control_frame, 5)
-        self.create_save_plot_frame(control_frame, 6)  
+        self.create_set_mono_type(control_frame, 2)
+        self.create_set_grating_frame(control_frame, 3)
+        self.create_fit_frame(control_frame, 4)
+        self.create_fit_results_frame(control_frame, 5)
+        self.create_set_saving_param_frame(control_frame, 6)
+        self.create_save_plot_frame(control_frame, 7)  
 
     def create_root_frame(self, title):
         """
@@ -151,6 +154,34 @@ class PlotApp:
         # Create a label to display messages
         self.label_grating = tk.Label(grating_frame, text="Grating not Set", font=self.text_font_style)
         self.label_grating.pack(side=tk.LEFT, padx=10, pady=5)
+
+    def create_set_mono_type(self, frame, row):
+        """
+        Create the frame for setting the monochromator type.
+
+        Args:
+            frame (tk.Frame): The parent frame.
+            row (int): The row position of the frame.
+        """
+        # Create the second row frame for Set mono button and entry field
+        mono_frame = ttk.Frame(frame)
+        mono_frame.grid(row=row, column=0, pady=5, sticky='ew')
+
+        # Label: mono
+        mono_label = tk.Label(mono_frame, text="Set Monochromator Type:", font=self.text_font_style)
+        mono_label.pack(side=tk.LEFT, padx=10, pady=5)
+
+        # Dropdown menu: mono types
+        self.mono_var = tk.StringVar()
+        self.mono_var.set(self.mono_types[0])  # Default value
+        mono_options = self.mono_types
+        self.mono_menu = tk.OptionMenu(mono_frame, self.mono_var, *mono_options, command=self.set_mono_type)
+        self.mono_menu.config(font=self.text_font_style)
+        self.mono_menu.pack(side=tk.LEFT, padx=10, pady=5)
+
+        # Create a label to display messages
+        self.label_mono = tk.Label(mono_frame, text=f"Monochromator type: {self.mono}", font=self.text_font_style)
+        self.label_mono.pack(side=tk.LEFT, padx=10, pady=5)
 
     def create_set_saving_param_frame(self, frame, row):
         """
@@ -311,6 +342,16 @@ class PlotApp:
             self.fig.savefig(data_name+'.pdf')
             
             self.save_label.config(text=f"Results Saved")
+
+    def set_mono_type(self, selected_type):
+        """
+        Set the monochromator type from the dropdown menu.
+
+        Args:
+            selected_type (str): The selected monochromator type.
+        """
+        self.mono = selected_type
+        self.label_mono.config(text=f"Monochromator type: {self.mono}")
     
     def set_beamline_name(self):
         """
@@ -497,8 +538,20 @@ class PlotApp:
 
             # Update labels with fit parameters
             self.label_fit.config(text=f"Sum Squared Residuals: {np.round(self.cost,5)}, Optimality: {np.round(self.opt,5)}, evaluations {self.nfev}")
-            self.dtheta_label.config(text=f"DTheta: {np.round(self.dtheta, 5)} deg")
-            self.dbeta_label.config(text=f"DBeta: {np.round(self.dbeta, 5)} deg")
+            if self.mono=='JenOptik':
+                dbeta = -self.dbeta
+                dtheta = self.dtheta
+                units = 'deg'
+            elif self.mono=='PM4':
+                dbeta =  self.dbeta
+                dtheta = self.dtheta
+                units = 'deg'
+            elif self.mono=='Andreas':
+                dbeta =  abs(self.dbeta)*3600/0.0225
+                dtheta = abs(self.dtheta)*3600/0.0225
+                units = ''
+            self.dtheta_label.config(text=f"DTheta: {np.round(dtheta, 5)} {units}")
+            self.dbeta_label.config(text=f"DBeta: {np.round(dbeta, 5)} {units}")
             self.e_opt_label.config(text=f"E_opt: {np.round(self.E_opt, 3)} eV")
         else:
             print("No data loaded.")
