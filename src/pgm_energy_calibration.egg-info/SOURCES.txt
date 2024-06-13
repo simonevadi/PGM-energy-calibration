@@ -3,6 +3,7 @@ pyproject.toml
 src/PGM_calibration.py
 src/__init__.py
 src/create_data.py
+src/gui.py
 src/nitrogen_fit.py
 src/nitrogen_plot.py
 src/pgm_energy_calibration.egg-info/PKG-INFO
