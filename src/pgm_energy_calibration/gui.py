@@ -21,20 +21,22 @@ class PlotApp:
         Args:
             root (tk.Tk): The root window of the Tkinter application.
         """
+
+        self.root = root
         # Store grating value
         self.grating = None
         self.dataframe = None
         self.mono = 'JenOptik'
         self.mono_types = ['JenOptik', 'PM4', 'Andreas']
-        self.pgm = PGMCalibration(0) # Initialized with a random value
+        self.pgm = PGMCalibration(0)  # Initialized with a random value
 
         # Load last file path from config file
         self.last_file_path = self.load_last_file_path()
         self.last_save_directory = self.load_last_save_directory()
 
-        self.create_root_frame(root, "PGM Energy Calibration")
-        plot_frame = self.create_plot_frame(root)
-        control_frame = self.create_control_frame(root)
+        self.create_root_frame("PGM Energy Calibration")
+        plot_frame = self.create_plot_frame()
+        control_frame = self.create_control_frame()
 
         self.button_font_style = ("Helvetica", 20, 'bold')
         self.text_font_style = ("Helvetica", 20)
@@ -48,7 +50,10 @@ class PlotApp:
         self.create_set_saving_param_frame(control_frame, 6)
         self.create_save_plot_frame(control_frame, 7)
 
-    def create_root_frame(self, root, title):
+        # Bind the close event
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def create_root_frame(self, title):
         """
         Create the root frame for the application.
 
@@ -56,39 +61,34 @@ class PlotApp:
             root (tk.Tk): The root window.
             title (str): The title of the root window.
         """
-        root.title(title)
+        self.root.title(title)
 
         # Set initial size of the window
         # root.geometry("1200x800")  # width x height
 
         # Make the root window scalable
-        root.columnconfigure(0, weight=1)
-        root.rowconfigure(0, weight=1)
+        self.root.columnconfigure(0, weight=1)
+        self.root.rowconfigure(0, weight=1)
 
-    def create_plot_frame(self, root):
+    def create_plot_frame(self):
         """
         Create the frame for the plot.
-
-        Args:
-            root (tk.Tk): The root window.
 
         Returns:
             ttk.Frame: The created plot frame.
         """
         # Create a frame for the plot
-        plot_frame = ttk.Frame(root)
+        plot_frame = ttk.Frame(self.root)
         plot_frame.grid(row=0, column=0, sticky='nsew')
         return plot_frame
 
-    def create_control_frame(self, root):
+    def create_control_frame(self):
         """
         Create the frame for the control widgets.
 
-        Args:
-            root (tk.Tk): The root window.
         """
         # Create a frame for the controls
-        control_frame = ttk.Frame(root)
+        control_frame = ttk.Frame(self.root)
         control_frame.grid(row=1, column=0, pady=10, sticky='ew')
         control_frame.columnconfigure(0, weight=1)
         return control_frame
@@ -582,6 +582,12 @@ class PlotApp:
                 return config.get('last_file_path', None)
         return None
 
+    def on_closing(self):
+        """
+        Handle the window close event.
+        """
+        plt.close('all')  # Close all Matplotlib figures
+        self.root.destroy()  # Destroy the Tkinter root window
 
 def main():
     # Create the main window
@@ -590,7 +596,6 @@ def main():
 
     # Run the application
     root.mainloop()
-
 
 if __name__ == '__main__':
     main()

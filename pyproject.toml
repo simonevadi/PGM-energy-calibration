@@ -24,7 +24,7 @@ dependencies = [
           ]
 
 [project.scripts]
-mcalibrate = "pgm_energy_calibration.gui:main"
+pecgui = "pgm_energy_calibration.gui:main"
 
 [build-system]
 requires = ["setuptools>=42", "wheel"]
