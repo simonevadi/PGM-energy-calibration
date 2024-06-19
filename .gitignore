@@ -3,3 +3,4 @@ ProgramByRolfFollath*
 *.zip
 config/config.json
 .venv/
+config/config.json
