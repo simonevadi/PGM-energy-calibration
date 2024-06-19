@@ -2,3 +2,4 @@ __pycache__
 ProgramByRolfFollath*
 *.zip
 config/config.json
+.venv/
