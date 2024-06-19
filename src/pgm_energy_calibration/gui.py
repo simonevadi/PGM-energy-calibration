@@ -9,7 +9,7 @@ import os
 import json
 import datetime
 
-from PGM_calibration import PGMCalibration
+from pgm_energy_calibration.PGM_calibration import PGMCalibration
 
 CONFIG_FILE = 'config/config.json'
 
@@ -21,24 +21,26 @@ class PlotApp:
         Args:
             root (tk.Tk): The root window of the Tkinter application.
         """
-                # Store grating value
+
+        self.root = root
+        # Store grating value
         self.grating = None
         self.dataframe = None
         self.mono = 'JenOptik'
         self.mono_types = ['JenOptik', 'PM4', 'Andreas']
-        self.pgm = PGMCalibration(0) # Initiliazed with a random value
+        self.pgm = PGMCalibration(0)  # Initialized with a random value
 
         # Load last file path from config file
         self.last_file_path = self.load_last_file_path()
         self.last_save_directory = self.load_last_save_directory()
 
-        root_frame = self.create_root_frame("PGM Energy Calibration")
-        plot_frame = self.create_plot_frame(root_frame)
-        control_frame = self.create_control_frame(root_frame)
+        self.create_root_frame("PGM Energy Calibration")
+        plot_frame = self.create_plot_frame()
+        control_frame = self.create_control_frame()
 
         self.button_font_style = ("Helvetica", 20, 'bold')
         self.text_font_style = ("Helvetica", 20)
-        
+
         self.create_empty_plot(plot_frame)
         self.create_load_file_frame(control_frame, 1)
         self.create_set_mono_type(control_frame, 2)
@@ -46,56 +48,52 @@ class PlotApp:
         self.create_fit_frame(control_frame, 4)
         self.create_fit_results_frame(control_frame, 5)
         self.create_set_saving_param_frame(control_frame, 6)
-        self.create_save_plot_frame(control_frame, 7)  
+        self.create_save_plot_frame(control_frame, 7)
+
+        # Bind the close event
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     def create_root_frame(self, title):
         """
         Create the root frame for the application.
 
         Args:
+            root (tk.Tk): The root window.
             title (str): The title of the root window.
-
-        Returns:
-            tk.Frame: The created root frame.
         """
-        root.title(title)
+        self.root.title(title)
 
         # Set initial size of the window
         # root.geometry("1200x800")  # width x height
 
         # Make the root window scalable
-        root.columnconfigure(0, weight=1)
-        root.rowconfigure(0, weight=1)
-        return root
-          
-    def create_plot_frame(self, frame):
+        self.root.columnconfigure(0, weight=1)
+        self.root.rowconfigure(0, weight=1)
+
+    def create_plot_frame(self):
         """
         Create the frame for the plot.
 
-        Args:
-            frame (tk.Frame): The parent frame.
-
         Returns:
-            tk.Frame: The created plot frame.
+            ttk.Frame: The created plot frame.
         """
         # Create a frame for the plot
-        plot_frame = ttk.Frame(frame)
+        plot_frame = ttk.Frame(self.root)
         plot_frame.grid(row=0, column=0, sticky='nsew')
         return plot_frame
-    
-    def create_control_frame(self, frame):
+
+    def create_control_frame(self):
         """
         Create the frame for the control widgets.
 
-        Args:
-            frame (tk.Frame): The parent frame.
         """
         # Create a frame for the controls
-        self.control_frame = ttk.Frame(frame)
-        self.control_frame.grid(row=1, column=0, pady=10, sticky='ew')
-        self.control_frame.columnconfigure(0, weight=1)
+        control_frame = ttk.Frame(self.root)
+        control_frame.grid(row=1, column=0, pady=10, sticky='ew')
+        control_frame.columnconfigure(0, weight=1)
+        return control_frame
 
-    def create_load_file_frame(self,frame, row):
+    def create_load_file_frame(self, frame, row):
         """
         Create the frame for loading files.
 
@@ -111,7 +109,7 @@ class PlotApp:
         browse_button = tk.Button(load_frame, text="Browse", command=self.browse_file, font=self.button_font_style)
         browse_button.pack(side=tk.LEFT, padx=10, pady=5)
 
-        # Button: file path
+        # Button: Load File
         load_button = tk.Button(load_frame, text="Load File", command=self.load_file_button, font=self.button_font_style)
         load_button.pack(side=tk.LEFT, padx=10, pady=5)
 
@@ -195,7 +193,7 @@ class PlotApp:
         saving_p_frame = ttk.Frame(frame)
         saving_p_frame.grid(row=row, column=0, pady=5, sticky='ew')
 
-        # Button: Set BEamline Name
+        # Button: Set Beamline Name
         set_saving_p_button = tk.Button(saving_p_frame, text="Set Beamline Name", command=self.set_beamline_name, font=self.button_font_style)
         set_saving_p_button.pack(side=tk.LEFT, padx=10, pady=5)
 
@@ -209,8 +207,7 @@ class PlotApp:
         self.saving_p_label = tk.Label(saving_p_frame, text="Beamline Name not Set", font=self.text_font_style)
         self.saving_p_label.pack(side=tk.LEFT, padx=10, pady=5)
 
-
-    def create_fit_frame(self, frame,row):
+    def create_fit_frame(self, frame, row):
         """
         Create the frame for the fit button and message label.
 
@@ -229,7 +226,7 @@ class PlotApp:
         # Create a label to display messages
         self.label_fit = tk.Label(fit_frame, text="", font=self.text_font_style)
         self.label_fit.pack(side=tk.LEFT, padx=10, pady=5)
-    
+
     def create_fit_results_frame(self, frame, row):
         """
         Create the frame for displaying fit parameters.
@@ -251,7 +248,6 @@ class PlotApp:
 
         self.e_opt_label = tk.Label(results_frame, text="E_opt: ", font=self.text_font_style)
         self.e_opt_label.pack(side=tk.LEFT, padx=10, pady=5)
-
 
     def create_empty_plot(self, plot_frame):
         """
@@ -340,7 +336,7 @@ class PlotApp:
             self.dataframe.to_csv(data_name+'_input_data.csv', index=False)
             fit_results_df.to_csv(data_name+'_fit_results.csv', index=False)
             self.fig.savefig(data_name+'.pdf')
-            
+
             self.save_label.config(text=f"Results Saved")
 
     def set_mono_type(self, selected_type):
@@ -352,7 +348,7 @@ class PlotApp:
         """
         self.mono = selected_type
         self.label_mono.config(text=f"Monochromator type: {self.mono}")
-    
+
     def set_beamline_name(self):
         """
         Set the beamline name from the entry widget.
@@ -395,7 +391,7 @@ class PlotApp:
             self.entry.insert(0, file_path)
             self.save_last_file_path(file_path)
             self.load_file_button()
-    
+
     def save_last_save_directory(self, directory):
         """
         Save the last directory used for saving results to a configuration file.
@@ -426,7 +422,7 @@ class PlotApp:
                 config = json.load(config_file)
                 return config.get('last_save_directory', '.')
         return '.'
-    
+
     def plot_cff_vs_en(self, csv_file='gui_data/ue112_2013.csv'):
         """
         Plot CFF values vs. measured energies from a CSV file.
@@ -436,11 +432,11 @@ class PlotApp:
         """
         # Clear previous plot
         self.ax.clear()
-        
+
         # Read the CSV file
         df = pd.read_csv(csv_file)
         self.dataframe = df  # Store the dataframe for later use
-        
+
         # Plot the data with different colors for different orders
         orders = df['orders'].unique()
         colors = plt.cm.viridis(np.linspace(0, 1, len(orders)))
@@ -461,13 +457,13 @@ class PlotApp:
         cff_max = np.max(df['cff_values'])
         en_min = np.min(df['measured_energies'])
         en_max = np.max(df['measured_energies'])
-        
+
         xticks_positions, xticks_labels = self.pgm.generate_x_ticks_pos_and_label(cff_min, cff_max)
-    
+
         self.ax.set_xticks(xticks_positions, labels=xticks_labels)
 
-        self.ax.set_xlim((cff_min-.005, cff_max+.2))
-        self.ax.set_ylim((en_min-1, en_max+1))
+        self.ax.set_xlim((cff_min - .005, cff_max + .2))
+        self.ax.set_ylim((en_min - 1, en_max + 1))
         self.canvas.draw()
 
     def plot_fit(self, measured_energies, cff_values, orders, DTheta=0, DBeta=0, E_opt=0):
@@ -484,13 +480,13 @@ class PlotApp:
         """
         unique_orders = np.unique(orders)
         colors = ['k', 'royalblue', 'darkgoldenrod', 'g', 'magenta', 'orange', 'red']
-        
+
         for idx, order in enumerate(unique_orders):
             # Filter data for the current order
             mask = (orders == order)
             cff_order = cff_values[mask]
             measured_order = measured_energies[mask]
-            
+
             # Use more points to plot the fit results
             cff_plot = np.arange(np.min(cff_values), np.max(cff_values), .01)
             mask = (cff_plot < 0.9) | (cff_plot > 1.1)
@@ -507,7 +503,7 @@ class PlotApp:
             fitted_energies = self.pgm.shifted_energy(cff_plot, orders_plot, np.deg2rad(DTheta), np.deg2rad(DBeta), E_opt)
 
             self.ax.plot(cff_plot, fitted_energies, '-', color=colors[idx], label=f'Fitted Order {order}', alpha=0.7)
-        
+
         self.ax.legend(loc='upper right')
         self.canvas.draw()
 
@@ -519,36 +515,35 @@ class PlotApp:
             print(f'Loaded data\n{self.dataframe}')
             self.load_file_button()
             # Instantiate the calibration class
-            
 
             # Set a reasonable initial guess manually
             self.pgm.set_initial_guess(automatic_guess=True)  # Example initial guess values
             measured_energies = self.dataframe['measured_energies']
-            cff_values        = self.dataframe['cff_values']
-            orders            = self.dataframe['orders']
+            cff_values = self.dataframe['cff_values']
+            orders = self.dataframe['orders']
             # Perform fitting
             self.dtheta, self.dbeta, self.E_opt, \
-            self.cost, self.opt, self.nfev = self.pgm.fit_parameters(measured_energies, 
-                                                                     cff_values, orders,
-                                                                     return_fit_eval=True)
+                self.cost, self.opt, self.nfev = self.pgm.fit_parameters(measured_energies,
+                                                                         cff_values, orders,
+                                                                         return_fit_eval=True)
 
             self.pgm.print_fit_results()
-            self.plot_fit(measured_energies, cff_values, orders, 
+            self.plot_fit(measured_energies, cff_values, orders,
                           DTheta=self.dtheta, DBeta=self.dbeta, E_opt=self.E_opt)
 
             # Update labels with fit parameters
-            self.label_fit.config(text=f"Sum Squared Residuals: {np.round(self.cost,5)}, Optimality: {np.round(self.opt,5)}, evaluations {self.nfev}")
-            if self.mono=='JenOptik':
+            self.label_fit.config(text=f"Sum Squared Residuals: {np.round(self.cost, 5)}, Optimality: {np.round(self.opt, 5)}, evaluations {self.nfev}")
+            if self.mono == 'JenOptik':
                 dbeta = -self.dbeta
                 dtheta = self.dtheta
                 units = 'deg'
-            elif self.mono=='PM4':
-                dbeta =  self.dbeta
+            elif self.mono == 'PM4':
+                dbeta = self.dbeta
                 dtheta = self.dtheta
                 units = 'deg'
-            elif self.mono=='Andreas':
-                dbeta =  abs(self.dbeta)*3600/0.0225
-                dtheta = abs(self.dtheta)*3600/0.0225
+            elif self.mono == 'Andreas':
+                dbeta = abs(self.dbeta) * 3600 / 0.0225
+                dtheta = abs(self.dtheta) * 3600 / 0.0225
                 units = ''
             self.dtheta_label.config(text=f"DTheta: {np.round(dtheta, 5)} {units}")
             self.dbeta_label.config(text=f"DBeta: {np.round(dbeta, 5)} {units}")
@@ -563,8 +558,16 @@ class PlotApp:
         Args:
             path (str): The file path to save.
         """
+        if os.path.exists(CONFIG_FILE):
+            with open(CONFIG_FILE, 'r') as config_file:
+                config = json.load(config_file)
+        else:
+            config = {}
+
+        config['last_file_path'] = path
+
         with open(CONFIG_FILE, 'w') as config_file:
-            json.dump({'last_file_path': path}, config_file)
+            json.dump(config, config_file)
 
     def load_last_file_path(self):
         """
@@ -579,11 +582,20 @@ class PlotApp:
                 return config.get('last_file_path', None)
         return None
 
+    def on_closing(self):
+        """
+        Handle the window close event.
+        """
+        plt.close('all')  # Close all Matplotlib figures
+        self.root.destroy()  # Destroy the Tkinter root window
 
+def main():
+    # Create the main window
+    root = tk.Tk()
+    app = PlotApp(root)
 
-# Create the main window
-root = tk.Tk()
-app = PlotApp(root)
+    # Run the application
+    root.mainloop()
 
-# Run the application
-root.mainloop()
+if __name__ == '__main__':
+    main()

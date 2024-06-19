@@ -3,6 +3,30 @@
 
 This project aims to analyze nitrogen spectra to evaluate the resolving power (RP) of a given nitrogen spectrum. The primary functionality is provided by the `fit_n2` function, which attempts to automatically fit a nitrogen spectrum and calculate the resolving power.
 
+## Installation
+
+1. **Clone the Repository**:
+   ```bash
+   git clone https://github.com/simonevadi/PGM-energy-calibration.git
+   ```
+
+2. **Change to the Repository Directory**:
+   ```bash
+   cd PGM-energy-calibration
+   ```
+
+3. **Run the Bootstrap Script**:
+   Execute the bootstrap script to set up the environment:
+   ```bash
+   bash -e scripts/bootstrap.sh
+   ```
+   Alternatively, you can run the script using any preferred method.
+
+**Note**: If you are using an older version of the repository, have made changes to the source code, or need to reset the environment, rerun the script with the `--reinstall` or `-r` argument to recreate the virtual environment:
+   ```bash
+   bash -e scripts/bootstrap.sh --reinstall
+   ```
+
 ## Files in the Project
 
 ### Data Creation and Analysis Scripts
